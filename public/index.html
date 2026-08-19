@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Silverpot — Unified Inventory</title>
+<style>
+  :root {
+    --ink: #12212F;
+    --navy: #1F4E79;
+    --teal: #0F6E56;
+    --paper: #FBFBF9;
+    --rule: #DFE3E6;
+    --dim: #7A828A;
+    --alert: #A32D2D;
+    --warn: #8A5A0B;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans); background: var(--paper); color: var(--ink);
+    padding: 2rem 1.5rem 4rem; max-width: 1120px; margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+  header { border-bottom: 2px solid var(--navy); padding-bottom: 0.9rem; margin-bottom: 1.5rem; }
+  h1 { font-size: 1.05rem; font-weight: 620; letter-spacing: -0.01em; color: var(--navy); }
+  .formula {
+    font-family: var(--mono); font-size: 0.68rem; color: var(--dim);
+    margin-top: 0.35rem; letter-spacing: -0.01em;
+  }
+  .stamp { font-family: var(--mono); font-size: 0.66rem; color: var(--dim); margin-top: 0.5rem; }
+
+  .totals { display: flex; gap: 2.5rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
+  .stat .n { font-family: var(--mono); font-size: 1.5rem; font-weight: 600; letter-spacing: -0.03em; }
+  .stat .l { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--dim); margin-top: 0.15rem; }
+  .stat.risk .n { color: var(--alert); }
+
+  .legend { display: flex; gap: 1.1rem; font-size: 0.66rem; color: var(--dim); margin-bottom: 0.6rem; align-items: center; }
+  .swatch { display: inline-block; width: 9px; height: 9px; margin-right: 0.3rem; vertical-align: -1px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  th {
+    text-align: right; padding: 0.4rem 0.5rem; font-size: 0.6rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em; color: var(--dim);
+    border-bottom: 1px solid var(--rule); white-space: nowrap;
+  }
+  th:first-child, td:first-child { text-align: left; }
+  th.bar-col { text-align: left; width: 34%; }
+  td { padding: 0.5rem; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; text-align: right; }
+  td.num { font-family: var(--mono); }
+  td.name { font-weight: 500; white-space: nowrap; }
+  td.name small { display: block; font-family: var(--mono); font-size: 0.62rem; color: var(--dim); font-weight: 400; }
+  tbody tr:hover { background: rgba(31,78,121,0.035); }
+
+  /* Signature: stock composition bar. Navy = FBA, teal = WFS, hatch = withheld buffer. */
+  .bar { display: flex; height: 15px; background: #EDEFF1; width: 100%; min-width: 120px; }
+  .bar span { display: block; }
+  .seg-fba { background: var(--navy); }
+  .seg-wfs { background: var(--teal); }
+  .seg-buf { background: repeating-linear-gradient(45deg, #C3C9CE 0 2px, #EDEFF1 2px 4px); }
+  .bar-note { font-family: var(--mono); font-size: 0.6rem; color: var(--dim); margin-top: 0.2rem; }
+
+  .cover-crit { color: var(--alert); font-weight: 600; }
+  .cover-warn { color: var(--warn); font-weight: 600; }
+  .zero { color: var(--alert); font-weight: 600; }
+  .muted { color: var(--dim); }
+
+  footer { margin-top: 2rem; font-size: 0.68rem; color: var(--dim); line-height: 1.6; }
+  #err { padding: 1.5rem; border: 1px solid var(--alert); color: var(--alert); font-size: 0.8rem; }
+  @media (max-width: 720px) {
+    body { padding: 1.25rem 0.75rem 3rem; }
+    th.bar-col, td.bar-cell, .hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Silverpot — Unified Inventory</h1>
+  <div class="formula">published = FBA.fulfillable + WFS.available_to_sell − buffer</div>
+  <div class="stamp" id="stamp">Loading…</div>
+</header>
+
+<div class="totals" id="totals"></div>
+
+<div class="legend">
+  <span><i class="swatch seg-fba"></i>FBA fulfillable</span>
+  <span><i class="swatch seg-wfs"></i>WFS available</span>
+  <span><i class="swatch seg-buf"></i>Withheld buffer</span>
+  <span class="muted">Sorted by cover — shortest first</span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Product</th>
+      <th class="bar-col">Composition</th>
+      <th>FBA</th>
+      <th>WFS</th>
+      <th class="hide-sm">Buffer</th>
+      <th>Live</th>
+      <th class="hide-sm">Inbound</th>
+      <th>Cover</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<footer id="foot"></footer>
+
+<script>
+const FEED = "./inventory.json";
+const fmt = n => (n ?? 0).toLocaleString();
+
+function coverCell(d) {
+  if (d === null || d === undefined) return '<span class="muted">—</span>';
+  const cls = d < 14 ? "cover-crit" : d < 30 ? "cover-warn" : "";
+  return `<span class="${cls}">${d}d</span>`;
+}
+
+function bar(it, scale) {
+  const total = it.fba + it.wfs;
+  if (total === 0) return '<div class="bar"></div><div class="bar-note">no sellable stock</div>';
+  const w = x => (x / scale * 100).toFixed(2) + "%";
+  const shown = Math.max(0, it.fba - Math.max(0, it.buffer - it.wfs));
+  return `<div class="bar">
+      <span class="seg-fba" style="width:${w(shown)}"></span>
+      <span class="seg-wfs" style="width:${w(Math.max(0, it.wfs - Math.min(it.buffer, it.wfs)))}"></span>
+      <span class="seg-buf" style="width:${w(Math.min(it.buffer, total))}"></span>
+    </div>`;
+}
+
+fetch(FEED, { cache: "no-store" })
+  .then(r => { if (!r.ok) throw new Error(`Feed returned ${r.status}`); return r.json(); })
+  .then(data => {
+    const items = data.items.slice().sort((a, b) => {
+      const ac = a.days_of_cover ?? 1e9, bc = b.days_of_cover ?? 1e9;
+      if (ac !== bc) return ac - bc;
+      return a.available - b.available;
+    });
+
+    const live = items.reduce((s, i) => s + i.available, 0);
+    const inbound = items.reduce((s, i) => s + (i.inbound || 0), 0);
+    const zero = items.filter(i => i.available === 0).length;
+    const thin = items.filter(i => i.days_of_cover !== null && i.days_of_cover < 30).length;
+
+    document.getElementById("stamp").textContent =
+      `Synced ${new Date(data.generated_at).toLocaleString()} · ${data.sku_count} SKUs`;
+
+    document.getElementById("totals").innerHTML = [
+      [fmt(live), "Sellable on site", ""],
+      [fmt(inbound), "Inbound (not published)", ""],
+      [zero, "At zero", zero ? "risk" : ""],
+      [thin, "Under 30d cover", thin ? "risk" : ""],
+    ].map(([n, l, c]) =>
+      `<div class="stat ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`
+    ).join("");
+
+    const scale = Math.max(...items.map(i => i.fba + i.wfs), 1);
+    document.getElementById("rows").innerHTML = items.map(it => `
+      <tr>
+        <td class="name">${it.name}<small>${it.sku || it.internal_code}</small></td>
+        <td class="bar-cell" style="text-align:left">${bar(it, scale)}</td>
+        <td class="num">${fmt(it.fba)}</td>
+        <td class="num">${fmt(it.wfs)}</td>
+        <td class="num hide-sm muted">−${fmt(it.buffer)}</td>
+        <td class="num ${it.available === 0 ? "zero" : ""}"><strong>${fmt(it.available)}</strong></td>
+        <td class="num hide-sm muted">${it.inbound ? fmt(it.inbound) : "—"}</td>
+        <td class="num">${coverCell(it.days_of_cover)}</td>
+      </tr>`).join("");
+
+    document.getElementById("foot").innerHTML =
+      `Live is what silverpottea.com is allowed to sell today. Inbound units are in transit or ` +
+      `being received and are deliberately excluded. Cover is derived from observed daily decline ` +
+      `in the snapshot history, so it needs a few days of runs before it reads anything.`;
+  })
+  .catch(e => {
+    document.body.innerHTML =
+      `<div id="err"><strong>Feed unavailable.</strong><br>${e.message}<br><br>` +
+      `Check that public/inventory.json exists and the daily sync workflow has run at least once.</div>`;
+  });
+</script>
+</body>
+</html>
