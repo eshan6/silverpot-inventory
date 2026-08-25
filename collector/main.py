@@ -66,6 +66,10 @@ def build(sku_map, fba_by_sku: dict, wfs_by_sku: dict) -> list[dict]:
             "fba_reserved": fba.get("reserved_total", 0),
             "fba_unfulfillable": fba.get("unfulfillable", 0),
             "fba_researching": fba.get("researching", 0),
+            "wfs_reserved": wfs.get("reserved", 0),
+            "wfs_inbound": wfs.get("inbound", 0),
+            "wfs_aged_over_270d": wfs.get("aged_over_270d", 0),
+            "wfs_stock_status": wfs.get("stock_status", ""),
             "matched_fba": bool(fba),
             "matched_wfs": bool(wfs),
         })
@@ -82,6 +86,9 @@ def snapshot_rows(date: str, results: list[dict]) -> list[list]:
             ("FBA", "unfulfillable", r["fba_unfulfillable"]),
             ("FBA", "researching", r["fba_researching"]),
             ("WFS", "available_to_sell", r["wfs_available"]),
+            ("WFS", "reserved", r["wfs_reserved"]),
+            ("WFS", "inbound", r["wfs_inbound"]),
+            ("WFS", "aged_over_270d", r["wfs_aged_over_270d"]),
             ("PUBLISHED", "available", r["published_available"]),
         ]
         for node, state, qty in pairs:
@@ -214,6 +221,11 @@ def main() -> int:
 
     if degraded:
         print(f"DEGRADED RUN - healthy sources: {', '.join(healthy)}", file=sys.stderr)
+    aged = [(r["internal_code"], r["wfs_aged_over_270d"]) for r in results
+            if r["wfs_aged_over_270d"] > 0]
+    if aged:
+        print("WFS units past 270 days (long-term storage fees apply): " +
+              ", ".join(f"{c}={q}" for c, q in aged))
     total = sum(r["published_available"] for r in results)
     oos = [r["internal_code"] for r in results if r["published_available"] == 0]
     print(f"{today}: {len(results)} SKUs | {total} publishable units | "
