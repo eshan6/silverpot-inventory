@@ -29,16 +29,29 @@ def configured() -> bool:
 def missing() -> list[str]:
     return [k for k in REQUIRED if not os.getenv(k)]
 
-# Ordered by preference. First match wins.
+# Confirmed against a live /v3/wfs/inventory response. The real envelope is:
+#
+#   payload.inventory[] = {
+#     itemInformation:  { sku, gtin, itemName, brand, itemID, ... },
+#     inventoryData:    { availableUnits, onhandUnits, reservedUnits,
+#                         inboundUnits, stockStatus, inventoryAge{...}, ... },
+#     inventoryInsights:{ daysOfSupply, sellThroughRate, surplusUnits, ... }
+#   }
+#
+# Note "onhandUnits" - lowercase h. Walmart's own docs do not name these fields,
+# so the earlier guesses were all wrong. Confirmed names lead each list; the
+# alternates stay as fallbacks in case Walmart renames anything.
 ATS_FIELDS = [
+    "availableUnits",
     "availableToSellQty", "availableToSellQuantity", "availableToSell",
-    "atsQty", "ats", "sellableQty", "sellableQuantity",
-    "availToSellQty", "availableQuantity",
+    "atsQty", "ats", "sellableQty", "sellableQuantity", "availableQuantity",
 ]
-ONHAND_FIELDS = ["onHandQty", "onHandQuantity", "onHand", "totalQty", "totalQuantity"]
-RESERVED_FIELDS = ["reservedQty", "reservedQuantity", "reserved"]
-INBOUND_FIELDS = ["inboundQty", "inboundQuantity", "inbound"]
+ONHAND_FIELDS = ["onhandUnits", "onHandUnits", "onHandQty", "onHandQuantity", "onHand"]
+RESERVED_FIELDS = ["reservedUnits", "reservedQty", "reservedQuantity", "reserved"]
+INBOUND_FIELDS = ["inboundUnits", "inboundQty", "inboundQuantity", "inbound"]
 SKU_FIELDS = ["sku", "sellerSku", "itemSku", "merchantSku"]
+STATUS_FIELDS = ["stockStatus"]
+DOS_FIELDS = ["daysOfSupply"]
 
 
 def _headers(token: str | None = None) -> dict:
@@ -146,10 +159,20 @@ def parse_record(rec: dict) -> dict:
         except (TypeError, ValueError):
             return 0
 
+    # Aged stock matters: WFS charges long-term storage on units sitting past
+    # 270 days, so surface it rather than burying it in the raw payload.
+    age = ((rec.get("inventoryData") or {}).get("inventoryAge") or {})
+    aged = n(age.get("271To365days")) + n(age.get("365PlusDays")) + \
+        n(age.get("365To450days")) + n(age.get("450PlusDays"))
+
     return {
         "sku": str(_deep_find(rec, SKU_FIELDS) or "").strip(),
+        "item_name": str(_deep_find(rec, ["itemName"]) or "").strip(),
         "available_to_sell": n(_deep_find(rec, ATS_FIELDS)),
         "on_hand": n(_deep_find(rec, ONHAND_FIELDS)),
         "reserved": n(_deep_find(rec, RESERVED_FIELDS)),
         "inbound": n(_deep_find(rec, INBOUND_FIELDS)),
+        "aged_over_270d": aged,
+        "stock_status": str(_deep_find(rec, STATUS_FIELDS) or ""),
+        "days_of_supply": str(_deep_find(rec, DOS_FIELDS) or ""),
     }
