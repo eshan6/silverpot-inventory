@@ -6,6 +6,11 @@ on:
     # 10-30 minutes under load; that is fine for a daily inventory pull.
     - cron: "30 5 * * *"
   workflow_dispatch:
+    inputs:
+      probe:
+        description: "Print raw API responses and write nothing"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -42,7 +47,12 @@ jobs:
           SUPABASE_TABLE: ${{ vars.SUPABASE_TABLE }}
           SUPABASE_SKU_COLUMN: ${{ vars.SUPABASE_SKU_COLUMN }}
           SUPABASE_QTY_COLUMN: ${{ vars.SUPABASE_QTY_COLUMN }}
-        run: python -m collector.main
+        run: |
+          if [ "${{ inputs.probe }}" = "true" ]; then
+            python -m collector.main --probe
+          else
+            python -m collector.main
+          fi
 
       - name: Commit feed
         run: |
