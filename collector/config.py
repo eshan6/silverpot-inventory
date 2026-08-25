@@ -35,6 +35,7 @@ class SkuRow:
     """
     internal_code: str
     product_name: str
+    format: str
     sku: str
     asin: str
     walmart_sku_override: str
@@ -87,6 +88,7 @@ def load_sku_map(path: Path = SKU_MAP_PATH) -> SkuMap:
                 SkuRow(
                     internal_code=code,
                     product_name=(rec.get("product_name") or "").strip(),
+                    format=(rec.get("format") or "").strip(),
                     sku=sku,
                     asin=(rec.get("asin") or "").strip(),
                     walmart_sku_override=(rec.get("walmart_sku_override") or "").strip(),
