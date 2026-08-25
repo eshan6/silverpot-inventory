@@ -1,0 +1,37 @@
+internal_code,product_name,format,sku,asin,walmart_sku_override,website_product_id,safety_buffer,active
+2201US,Original Darjeeling,tin,R9-D7AT-S5WW,B0DLGWMV7R,,,,TRUE
+2202US,Original Assam,tin,NF-TRB8-GCE3,B0DLH3RHHC,,,,TRUE
+2203US,English Breakfast,tin,CA-1KR5-XQKF,B0DLNXW93Y,,,,TRUE
+2204US,Black Tea & Lemon,tin,70-3R1B-6H3T,B0DLP4BVW1,,,,TRUE
+2205US,Black Tea & Ginger,tin,8D-IYOY-QFGB,B0DLSZWBXR,,,,TRUE
+2207US,Original Masala Chai,tin,8906048382868,B0DLT47Z15,,,,TRUE
+2208US,Cardamom Masala Chai,tin,2R-SB56-O2TT,B0DLTJD2Y4,,,,TRUE
+2209US,Ginger Masala Chai,tin,UZ-LPS9-WKKW,B0DLTGRYKT,,,,TRUE
+2211US,Original Green Tea,tin,80-PPK9-X4LW,B0DLTJ18RR,,,,TRUE
+2212US,Green Tea & Jasmine,tin,T1-BJGD-H7P0,B0DLTHLVB2,,,,TRUE
+2213US,Green Tea & Mint,tin,3X-OSTW-866E,B0DLTJQ2VK,,,,TRUE
+2214US,Green Tea & Lemon,tin,6G-ZWHY-YP19,B0DLTJ2F8L,,,,TRUE
+2215US,Green Tea & Ginger,tin,IP-PY08-5BTO,B0DLTHPR2M,,,,TRUE
+2217US,Original Tulsi,tin,8L-FFDL-RR3O,B0DLTZ2612,,,,TRUE
+2218US,Tulsi & Green Tea,tin,3I-BITV-OM1V,B0DLTZ3QT7,,,,TRUE
+2219US,Tulsi & Ginger,tin,LW-IYO9-UF6F,B0DLV19X7Y,,,,TRUE
+2221US,Original Fennel,tin,AC-CV35-SHRN,B0DLTZXRV6,,,,TRUE
+2222US,Fennel & Peppermint,tin,XE-EKSY-GI07,B0DLV1KKZ6,,,,TRUE
+2223US,Fennel & Star Anise,tin,TI-O8HH-5POI,B0DLTYYG5B,,,,TRUE
+2224US,Original Turmeric,tin,TG-34ZG-5OMZ,B0DLTZBL9P,,,,TRUE
+2225US,Turmeric & Ginger,tin,9J-T8HS-C66T,B0DLV1PB82,,,,TRUE
+2226US,Turmeric & Star Anise,tin,CS-RT46-MYCV,B0DLTZMFSD,,,,TRUE
+2227US,Original Ginger,tin,T0-3BW2-ZJ6Y,B0DLV1RSYX,,,,TRUE
+2228US,Ginger & Lemon,tin,DL-EEDT-MG20,B0DLWRZ5NY,,,,TRUE
+2229US,Ginger & Cinnamon,tin,06-2F24-Y8AJ,B0DLV3KKSQ,,,,TRUE
+2231US,Original Peppermint,tin,LC-V1UX-GB2V,B0DLWTCTQX,,,,TRUE
+2232US,Original Spearmint,tin,H8-IVUA-LG64,B0DLWSRMFN,,,,TRUE
+2233US,Peppermint & Spearmint,tin,US-ASRC-EUHM,B0DLWTFRJ9,,,,TRUE
+2234US,Original Hibiscus,tin,PF-6T0V-4EIV,B0DLWWT372,,,,TRUE
+2238US,Ashwagandha & Cinnamon,tin,EP-5GW5-JXB5,B0DLWWRGLP,,,,TRUE
+2242US,Lemongrass & Peppermint,tin,Y5-C6HY-68LV,B0DLWTG5XN,,,,TRUE
+2301US,Original Darjeeling (100ct pouch),pouch,LI-IE63-L7K3,,,,,TRUE
+2307US,Original Masala Chai (100ct pouch),pouch,SE-3UPE-IO7M,,,,,TRUE
+2317US,Original Tulsi (100ct pouch),pouch,X4-NBPO-69NU,,,,,TRUE
+2322US,Fennel & Peppermint (100ct pouch),pouch,M6-VQP9-KZDY,,,,,TRUE
+2329US,Ginger & Cinnamon (100ct pouch),pouch,1G-5XDW-C8O9,,,,,TRUE
