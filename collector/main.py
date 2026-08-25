@@ -51,6 +51,7 @@ def build(sku_map, fba_by_sku: dict, wfs_by_sku: dict) -> list[dict]:
         results.append({
             "internal_code": row.internal_code,
             "product_name": row.product_name,
+            "format": row.format,
             "sku": row.sku,
             "walmart_sku": row.walmart_sku,
             "sku_diverged": bool(row.walmart_sku_override),
@@ -266,6 +267,7 @@ def main() -> int:
         "items": [{
             "internal_code": r["internal_code"],
             "name": r["product_name"],
+            "format": r["format"],
             "sku": r["sku"],
             "asin": r["asin"],
             "website_product_id": r["website_product_id"],
