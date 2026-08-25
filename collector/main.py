@@ -226,9 +226,18 @@ def main() -> int:
         return 0
 
     from . import sheets
+    expected = {"internal_code", "product_name", "sku", "walmart_sku", "asin",
+                "fba_fulfillable", "wfs_available", "raw_available", "safety_buffer",
+                "published_available", "fba_inbound", "fba_reserved",
+                "fba_unfulfillable", "daily_depletion", "days_of_cover"}
+    if results:
+        gap = expected - set(results[0])
+        if gap:
+            raise KeyError(f"result rows are missing expected keys: {sorted(gap)}")
+
     sheets.append_snapshots(sh, snapshot_rows(today, results))
     sheets.write_current(sh, [[
-        r["internal_code"], r["product_name"], r["amazon_seller_sku"], r["walmart_sku"],
+        r["internal_code"], r["product_name"], r["sku"], r["walmart_sku"],
         r["asin"], r["fba_fulfillable"], r["wfs_available"], r["raw_available"],
         r["safety_buffer"], r["published_available"], r["fba_inbound"], r["fba_reserved"],
         r["fba_unfulfillable"], r["daily_depletion"] or "", r["days_of_cover"] or "",
