@@ -6,8 +6,12 @@
 It does not need GitHub access to read or edit files, so there is no reason to
 expose your SKU map, stock levels, or inventory feed publicly.
 
-**Amazon's 403 will not be fixed here.** It is a permission grant on Amazon's
-servers. Open the support case in parallel; that is the only path.
+**Amazon's 403 is a wrong-role problem.** The FBA Inventory API is guarded by
+the **Amazon Fulfillment** role; the app was approved for *Inventory and Order
+Tracking*, which covers orders instead. Tick Amazon Fulfillment in Develop Apps,
+re-authorize, mint a fresh refresh token. No support case needed. Until that
+lands, the collector falls back to the Reports API automatically, so the sync
+still produces real Amazon numbers.
 
 ## Setup, once
 
@@ -67,8 +71,9 @@ Then read `collector/main.py` to see how the pieces fit together.
 Short version: this is a daily inventory pipeline that pulls stock from Amazon
 FBA and Walmart WFS, stores an append-only history in Google Sheets, and
 publishes a JSON feed that will eventually drive stock levels on
-silverpottea.com. Walmart works. Amazon returns 403 on every inventory call
-despite a valid token and an approved developer profile.
+silverpottea.com. Walmart works. Amazon was returning 403 on every inventory
+call despite a valid token, because the app was approved for the wrong SP-API
+role; see the Amazon section of `CLAUDE.md`.
 
 I have credentials in `.env`. Load them with
 `set -a && source .env && set +a` before running anything.
@@ -81,11 +86,11 @@ Four things I want, in this order:
 python -m collector.main --diagnose
 ```
 
-It calls a role-free SP-API endpoint alongside the inventory endpoint. If the
-role-free one succeeds and inventory 403s, the app is live but the role is not
-attached to the token. If both 403, the app is not authorised for API calls at
-all. Tell me which, and draft the support case text for Amazon based on the
-result. Do not try to fix this in code — it is an Amazon-side grant.
+It probes one harmless endpoint per SP-API role — role-free Sellers, FBA
+Inventory, Fulfillment Outbound, Orders, Catalog Items, Reports — and prints
+which roles the token actually carries. Whichever canaries pass are the roles
+you have; whichever fail name the checkbox that is missing in Develop Apps.
+Tell me what it says and which role I need to tick.
 
 **2. Clean up the snapshots tab.**
 

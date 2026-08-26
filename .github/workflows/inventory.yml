@@ -11,6 +11,10 @@ on:
         description: "Print raw API responses and write nothing"
         type: boolean
         default: false
+      diagnose:
+        description: "Probe Amazon permissions role by role and write nothing"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -48,7 +52,9 @@ jobs:
           SUPABASE_SKU_COLUMN: ${{ vars.SUPABASE_SKU_COLUMN }}
           SUPABASE_QTY_COLUMN: ${{ vars.SUPABASE_QTY_COLUMN }}
         run: |
-          if [ "${{ inputs.probe }}" = "true" ]; then
+          if [ "${{ inputs.diagnose }}" = "true" ]; then
+            python -m collector.main --diagnose
+          elif [ "${{ inputs.probe }}" = "true" ]; then
             python -m collector.main --probe
           else
             python -m collector.main

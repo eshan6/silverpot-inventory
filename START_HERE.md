@@ -201,10 +201,14 @@ Watch `sales@dcgnorthamerica.com` — that's the email on the case.
 When approved:
 
 1. Go to Developer Central → **Add new app client**
-2. Name: `silverpot-inventory`, tick **Inventory and Order Tracking**
+2. Name: `silverpot-inventory`, tick **Amazon Fulfillment** (*not* Inventory and
+   Order Tracking — that role covers orders, not FBA inventory, and ticking it
+   alone is what produced the 403). Add **Product Listing** if it stays denied.
 3. Amazon shows you a **client ID** and **client secret** — save both
 4. On the app row, dropdown → **Authorize**. This gives you a **refresh token**
-   starting `Atzr|`. Save it.
+   starting `Atzr|`. Save it. A refresh token keeps the roles it was minted
+   with, so re-authorize and mint a fresh one any time you change the roles.
+   Check it with `python -m collector.main --diagnose`.
 5. Add three more GitHub secrets:
 
 | Name | Value |

@@ -12,9 +12,10 @@ researching quantities are recorded in the snapshot table for forecasting and
 never published to the website.
 
 Usage:
-    python -m collector.main            # full run
-    python -m collector.main --probe    # print raw API shapes, write nothing
-    python -m collector.main --dry-run  # compute and print, write nothing
+    python -m collector.main             # full run
+    python -m collector.main --diagnose  # name the missing Amazon role, write nothing
+    python -m collector.main --probe     # print raw API shapes, write nothing
+    python -m collector.main --dry-run   # compute and print, write nothing
 """
 import argparse
 import json
@@ -117,6 +118,8 @@ def depletion(series: list[tuple[str, int]]) -> tuple[float | None, float | None
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe", action="store_true", help="Print raw API payloads and exit")
+    ap.add_argument("--diagnose", action="store_true",
+                    help="Probe Amazon permissions role by role and exit")
     ap.add_argument("--dry-run", action="store_true", help="Compute but write nothing")
     args = ap.parse_args()
 
@@ -126,11 +129,19 @@ def main() -> int:
     if net.apply_ipv4_preference():
         print("Network: forcing IPv4")
 
+    if args.diagnose:
+        if not amazon.configured():
+            print(f"Amazon not configured: {', '.join(amazon.missing())}")
+            return 1
+        amazon.diagnose()
+        return 0
+
     # Each marketplace is pulled independently. One failing must never take the
     # other down with it, and must never be silently reported as zero stock.
     status = {"FBA": "pending", "WFS": "pending"}
     fba_by_sku, wfs_by_sku = {}, {}
     fba_raw, wfs_first_page, wfs_parsed = [], {}, []
+    fba_source = None
 
     if not amazon.configured():
         status["FBA"] = "skipped"
@@ -138,13 +149,13 @@ def main() -> int:
     else:
         try:
             az_token = amazon.get_access_token()
-            fba_raw = amazon.fetch_fba_summaries(az_token)
-            fba_parsed = [amazon.parse_summary(x) for x in fba_raw]
-            fba_by_sku = {p["seller_sku"].upper(): p for p in fba_parsed if p["seller_sku"]}
+            fba_raw, fba_source = amazon.fetch_fba_inventory(az_token)
+            fba_by_sku = {p["seller_sku"].upper(): p for p in fba_raw if p["seller_sku"]}
             status["FBA"] = "ok"
-            print(f"Amazon: {len(fba_by_sku)} SKUs returned")
+            print(f"Amazon: {len(fba_by_sku)} SKUs returned via {fba_source}")
         except Exception as exc:
             status["FBA"] = "failed"
+            fba_source = None
             print(f"Amazon FAILED: {net.describe_error(exc)}", file=sys.stderr)
 
     if not walmart.configured():
@@ -175,7 +186,7 @@ def main() -> int:
 
     if args.probe:
         print(f"Status: {status}")
-        print("=== FBA raw sample ===")
+        print(f"=== FBA parsed sample (via {fba_source or 'nothing'}) ===")
         print(json.dumps(fba_raw[:2], indent=2))
         print("=== WFS raw first page ===")
         print(json.dumps(wfs_first_page, indent=2)[:6000])
@@ -263,6 +274,10 @@ def main() -> int:
         "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
         "sku_count": len(results),
         "source_status": status,
+        # Which Amazon route produced these numbers: the FBA Inventory API, or
+        # one of the Reports API fallbacks. Kept in the feed so a published
+        # figure can always be traced back to how it was obtained.
+        "fba_source": fba_source,
         "degraded": degraded,
         "items": [{
             "internal_code": r["internal_code"],

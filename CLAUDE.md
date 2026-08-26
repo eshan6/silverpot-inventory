@@ -43,14 +43,16 @@ overridable per SKU in `sku_map.csv`.
 collector/
   config.py    SKU map loader, dataclasses, constants
   net.py       shared HTTP session: retries, IPv4 forcing, error descriptions
-  amazon.py    SP-API FBA inventory + diagnose()
+  amazon.py    SP-API FBA inventory (API + Reports fallback) + diagnose()
   walmart.py   Walmart WFS inventory
   sheets.py    Google Sheets sink (snapshots + current tabs)
   website.py   Supabase writer (not yet configured)
   main.py      orchestrator
 sku_map.csv    the identity layer - 36 rows, hand-maintained
 public/        static dashboard + inventory.json feed
+tests/         payload-shape tests; no credentials, no network
 .github/workflows/inventory.yml   daily cron 05:30 UTC
+.github/workflows/tests.yml       unit tests on every push
 ```
 
 `internal_code` (`2201US`, `2301US`) is the join key for the whole system and
@@ -66,18 +68,40 @@ migration issues new Amazon SKUs while Walmart keeps the old ones.
 lowercase h). Walmart's docs do not name these fields; they were found by
 dumping a live response with `--probe`.
 
-**Amazon: blocked on a 403.** Token exchange succeeds. Every call to
-`/fba/inventory/v1/summaries` returns
+**Amazon: 403 root-caused, and the app carries the wrong role.** Token
+exchange succeeds; every call to `/fba/inventory/v1/summaries` returns
 `{"code":"Unauthorized","message":"Access to requested resource is denied."}`.
-Developer profile was approved for Inventory and Order Tracking on 2026-08-19
-(case 21676039541). App ID
-`amzn1.sp.solution.6e40c16d-09eb-4881-993e-2a7e6b319e38`. Self-authorized twice,
-including a fresh refresh token. Still 403 after 24 hours, so it is not
-propagation delay.
+App ID `amzn1.sp.solution.6e40c16d-09eb-4881-993e-2a7e6b319e38`, self-authorized
+twice including a fresh refresh token, still 403 after 24 hours - so it was
+never propagation delay.
 
-**This is an Amazon-side grant problem and cannot be fixed in code.** Run
-`--diagnose` to isolate the layer, then it needs a support case. Do not spend
-time rewriting the Amazon client; the token is valid and the request is correct.
+The cause: **the FBA Inventory API is guarded by the "Amazon Fulfillment"
+role.** The approval obtained on 2026-08-19 (case 21676039541) was for
+*Inventory and Order Tracking*, which covers the Orders API and order tracking
+reports, not FBA inventory. Approving the wrong role produces exactly this
+signature - LWA fine, endpoint denied. Several sellers hitting the same 403
+also needed *Product Listing* before it cleared.
+
+The fix Eshan has to make (a checkbox, not code): Seller Central > Partner
+Network > Develop Apps > Edit App, tick **Amazon Fulfillment**, save,
+re-authorize the app, and mint a **fresh refresh token** - an existing token
+keeps the roles it was minted with, which is why re-authorizing without
+changing the roles changed nothing.
+
+Two things in the code make that survivable:
+
+- `--diagnose` probes one harmless endpoint per role and prints which roles the
+  token actually carries, so the missing checkbox is named rather than guessed.
+- `amazon.fetch_fba_inventory()` falls back to the Reports API
+  (`GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA`, then `GET_AFN_INVENTORY_DATA`)
+  when the direct endpoint 403s. Different role set, same fulfillable numbers,
+  so the sync can run before the role lands. It is slower and has no reserved
+  breakdown. The route used is recorded in `public/inventory.json` as
+  `fba_source`, so every published number is traceable to how it was obtained.
+
+The fallback is a bridge, not the destination. Once **Amazon Fulfillment** is
+granted, the direct API is used again automatically and `fba_source` goes back
+to `fba-inventory-api`.
 
 **Website push: not configured.** Waiting on Supabase table and column names
 from the silverpottea.com Lovable project. See `LOVABLE_PROMPT.md`.
@@ -87,10 +111,12 @@ from the silverpottea.com Lovable project. See `LOVABLE_PROMPT.md`.
 ```bash
 pip install -r requirements.txt
 
-python -m collector.main --diagnose   # test Amazon permissions, write nothing
+python -m collector.main --diagnose   # name the missing Amazon role, write nothing
 python -m collector.main --probe      # dump raw API responses, write nothing
 python -m collector.main --dry-run    # compute and print, write nothing
 python -m collector.main              # full run
+
+python -m unittest discover -s tests  # no credentials or network needed
 ```
 
 Credentials come from environment variables. Locally, put them in `.env`

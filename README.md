@@ -70,13 +70,20 @@ SigV4 in October 2023; it is now plain OAuth.
    seller** (an app only your own account uses). Approval is usually same-day to
    a few days.
 3. Once approved: **Add new app client**. Name it `silverpot-inventory`. Under
-   roles, tick **Inventory and Order Tracking** — that is what the FBA Inventory
-   API needs. Do not request roles you don't need; extra roles slow approval.
+   roles, tick **Amazon Fulfillment** — that, not *Inventory and Order
+   Tracking*, is what the FBA Inventory API needs. Getting this wrong is what
+   caused the long-running 403: LWA succeeds, then every call to
+   `/fba/inventory/v1/summaries` returns *Access to requested resource is
+   denied*. If it stays denied, add **Product Listing** too.
 4. Amazon shows you an **LWA client ID** (`amzn1.application-oa2-client...`) and
    an **LWA client secret**. Copy both.
 5. On the app row, open the dropdown → **Authorize**. This is self-authorization,
    since it's your own seller account. Amazon returns a **refresh token**
    (`Atzr|...`). Copy it. It does not expire unless you revoke it.
+6. **A refresh token keeps the roles it was minted with.** If you ever change
+   the app's roles, re-authorize and mint a new refresh token, or nothing
+   changes. Confirm with `python -m collector.main --diagnose`, which probes one
+   endpoint per role and prints which ones the token actually carries.
 
 You now have `LWA_CLIENT_ID`, `LWA_CLIENT_SECRET`, `LWA_REFRESH_TOKEN`.
 
