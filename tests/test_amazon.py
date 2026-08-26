@@ -8,7 +8,9 @@ pin the shapes rather than to exercise the happy path.
 
     python -m unittest discover -s tests -v
 """
+import contextlib
 import gzip
+import io
 import json
 import sys
 import unittest
@@ -310,6 +312,70 @@ class TestPublishMath(unittest.TestCase):
         self.assertEqual(out["raw_available"], 41)
         self.assertEqual(out["fba_inbound"], 126)
         self.assertEqual(out["published_available"], 41 - 3)
+
+
+# --------------------------------------------------------------------------
+# diagnose()
+# --------------------------------------------------------------------------
+
+class DiagnoseSession:
+    """Answers each canary with a status code keyed off its path."""
+
+    def __init__(self, codes: dict[str, int]):
+        self.codes = codes
+
+    def get(self, url, headers=None, timeout=None, params=None):
+        for fragment, code in self.codes.items():
+            if fragment in url:
+                return FakeResponse(code, None if code == 200 else DENIED)
+        raise AssertionError(f"unrouted canary: {url}")
+
+
+class TestDiagnose(FakeSessionMixin):
+    def run_with(self, codes) -> str:
+        self.use(DiagnoseSession(codes))
+        original = amazon.get_access_token
+        amazon.get_access_token = lambda: "x" * 375
+        self.addCleanup(lambda: setattr(amazon, "get_access_token", original))
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            amazon.diagnose()
+        return buf.getvalue()
+
+    # The real 2026-08-26 run: FBA Inventory answered 200 while Sellers and
+    # Catalog Items were denied. The verdict keyed off Sellers first and
+    # announced the app was not live, which was flatly wrong.
+    def test_fba_200_wins_over_a_denied_sellers_canary(self):
+        out = self.run_with({"/sellers/": 403, "/fba/inventory/": 200,
+                             "/fba/outbound/": 200, "/orders/": 200,
+                             "/catalog/": 403, "/reports": 200})
+        self.assertIn("FBA Inventory works", out)
+        self.assertNotIn("not live", out)
+        self.assertIn("Amazon Fulfillment", out)
+
+    def test_sellers_is_not_labelled_role_free(self):
+        # It needs Selling Partner Insights. Calling it role-free is what made
+        # its 403 look like evidence about the whole app.
+        out = self.run_with({"/sellers/": 403, "/fba/inventory/": 200,
+                             "/fba/outbound/": 200, "/orders/": 200,
+                             "/catalog/": 403, "/reports": 200})
+        self.assertNotIn("no role required", out)
+        self.assertIn("Selling Partner Insights", out)
+
+    def test_fba_denied_names_the_missing_role(self):
+        out = self.run_with({"/sellers/": 403, "/fba/inventory/": 403,
+                             "/fba/outbound/": 403, "/orders/": 200,
+                             "/catalog/": 403, "/reports": 200})
+        self.assertIn("does not carry the role", out)
+        self.assertIn("Inventory and Order Tracking", out)
+
+    def test_everything_denied_says_the_app_is_not_authorized(self):
+        out = self.run_with({"/sellers/": 403, "/fba/inventory/": 403,
+                             "/fba/outbound/": 403, "/orders/": 403,
+                             "/catalog/": 403, "/reports": 403})
+        self.assertIn("every endpoint is denied", out)
+        self.assertIn("authorized for API calls", out)
+        self.assertNotIn("FBA Inventory works", out)
 
 
 if __name__ == "__main__":

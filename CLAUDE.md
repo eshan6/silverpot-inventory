@@ -63,62 +63,54 @@ migration issues new Amazon SKUs while Walmart keeps the old ones.
 
 ## Current status
 
-**Walmart: working.** 36 SKUs, ~323 publishable units. The correct field is
+**Walmart: working.** 36 SKUs. The correct field is
 `payload.inventory[].inventoryData.availableUnits` (note `onhandUnits` has a
 lowercase h). Walmart's docs do not name these fields; they were found by
 dumping a live response with `--probe`.
 
-**Amazon: 403 root-caused, and the app carries the wrong role.** Token
-exchange succeeds; every call to `/fba/inventory/v1/summaries` returns
-`{"code":"Unauthorized","message":"Access to requested resource is denied."}`.
-App ID `amzn1.sp.solution.6e40c16d-09eb-4881-993e-2a7e6b319e38`, self-authorized
-twice including a fresh refresh token, still 403 after 24 hours - so it was
-never propagation delay.
+**Amazon: working since 2026-08-26.** 36 SKUs via the direct FBA Inventory
+API (`fba_source: fba-inventory-api`). Combined with Walmart the feed now
+publishes 1132 units across 36 SKUs, 9 at zero.
 
-The cause: **the FBA Inventory API is guarded by the "Amazon Fulfillment"
-role.** The approval obtained on 2026-08-19 (case 21676039541) was for
-*Inventory and Order Tracking*, which covers the Orders API and order tracking
-reports, not FBA inventory. Approving the wrong role produces exactly this
-signature - LWA fine, endpoint denied. Several sellers hitting the same 403
-also needed *Product Listing* before it cleared.
+How the 403 was resolved, because the reasoning was wrong twice on the way:
 
-The fix is not code, and it is not a checkbox on the app either. **The role
-list on the App registration page only offers roles the developer profile was
-approved for.** Silverpot's profile carries Inventory and Order Tracking alone,
-so Amazon Fulfillment is not rendered as an option at all. Confirmed on
-2026-08-26 against the live Develop Apps page.
+- `/fba/inventory/v1/summaries` is guarded by the **Amazon Fulfillment** role,
+  not *Inventory and Order Tracking*. The 2026-08-19 approval (case
+  21676039541) was for the latter, which covers the Orders API and order
+  tracking reports. LWA fine, endpoint denied - that is the signature.
+- A refresh token **keeps the roles it was minted with**. Self-authorizing
+  twice against an unchanged role set could never have helped. What finally
+  fixed it was minting a fresh refresh token once the roles were right.
 
-So it goes profile first, app second:
+Confirmed by `--diagnose` on the live token:
 
-1. Solution Provider Portal > Developer Central > **developer profile** > Edit.
-   Add **Amazon Fulfillment** (and **Product Listing**), re-answer the use-case
-   and data-security questions, resubmit for evaluation. Manual review, days.
-2. Once approved, the checkbox appears on App registration. Tick it, save.
-3. Re-authorize the app and mint a **fresh refresh token** - an existing token
-   keeps the roles it was minted with, which is why re-authorizing twice
-   without changing the roles changed nothing.
+```
+[Selling Partner Insights   ] Sellers                HTTP 403
+[Amazon Fulfillment         ] FBA Inventory          HTTP 200
+[Amazon Fulfillment         ] Fulfillment Outbound   HTTP 200
+[Inventory and Order Tracking] Orders                HTTP 200
+[Product Listing            ] Catalog Items          HTTP 403
+[Reports API                ] Reports                HTTP 200
+```
 
-Two things in the code make that survivable:
+Product Listing and Selling Partner Insights are **not** granted, and nothing
+in this pipeline needs them. Do not chase those 403s.
 
-- `--diagnose` probes one harmless endpoint per role and prints which roles the
-  token actually carries, so the missing checkbox is named rather than guessed.
+Two things in the code exist because of this episode:
+
+- `--diagnose` probes one endpoint per role and prints which roles the token
+  actually carries. Read its verdict carefully: the target endpoint is judged
+  first and on its own. An earlier version keyed the verdict off the Sellers
+  canary, which it wrongly labelled role-free, and announced "the app is not
+  live" while FBA Inventory was answering 200. **There is no genuinely
+  role-free SP-API endpoint** - Sellers needs Selling Partner Insights.
 - `amazon.fetch_fba_inventory()` falls back to the Reports API
   (`GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA`, then `GET_AFN_INVENTORY_DATA`)
-  when the direct endpoint 403s. It is slower and has no reserved breakdown.
-  The route used is recorded in `public/inventory.json` as `fba_source`, so
-  every published number is traceable to how it was obtained.
-
-**Do not oversell the fallback.** It buys a different *role set*, not a way
-around the profile: `GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA` wants Pricing +
-Amazon Fulfillment, and `GET_AFN_INVENTORY_DATA` is an FBA report too. If the
-profile carries Inventory and Order Tracking alone, expect both to 403 as well
-- that role reaches orders and MFN quantities, not fulfillment-center stock.
-There is no known route to FBA fulfillable quantity without Amazon Fulfillment.
-`--diagnose` answers this definitively rather than by inference; run it before
-telling anyone the sync is unblocked.
-
-Once **Amazon Fulfillment** is granted, the direct API is used again
-automatically and `fba_source` goes back to `fba-inventory-api`.
+  on a 403. It is slower and has no reserved breakdown, and both reports also
+  sit under Amazon Fulfillment, so it is insurance against a role being
+  revoked, not a way around one that was never granted. The route used is
+  recorded in `public/inventory.json` as `fba_source`, so every published
+  number is traceable to how it was obtained.
 
 **Website push: not configured.** Waiting on Supabase table and column names
 from the silverpottea.com Lovable project. See `LOVABLE_PROMPT.md`.

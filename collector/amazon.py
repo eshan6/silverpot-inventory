@@ -415,7 +415,10 @@ def fetch_fba_inventory(access_token: str) -> tuple[list[dict], str]:
 def _canary_probes() -> list[tuple[str, str, str, dict]]:
     since = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
     return [
-        ("no role required", "Sellers",
+        # There is no genuinely role-free SP-API endpoint to use as a baseline.
+        # Sellers looks like one and is not: it needs Selling Partner Insights,
+        # and a 403 here says nothing about whether the app works.
+        ("Selling Partner Insights", "Sellers",
          "/sellers/v1/marketplaceParticipations", {}),
         ("Amazon Fulfillment", "FBA Inventory (the one that is failing)",
          "/fba/inventory/v1/summaries",
@@ -429,7 +432,7 @@ def _canary_probes() -> list[tuple[str, str, str, dict]]:
         ("Product Listing", "Catalog Items",
          "/catalog/2022-04-01/items",
          {"keywords": "tea", "marketplaceIds": US_MARKETPLACE_ID}),
-        ("varies by report type", "Reports (the fallback route)",
+        ("Reports API", "Reports (the fallback route)",
          f"{REPORTS_PATH}/reports",
          {"reportTypes": INVENTORY_REPORTS[0], "marketplaceIds": US_MARKETPLACE_ID}),
     ]
@@ -466,20 +469,26 @@ def diagnose() -> None:
             print(note)
 
     by_label = {label: code for _role, label, code in results}
-    sellers = by_label.get("Sellers")
     fba = by_label.get("FBA Inventory (the one that is failing)")
     reports = by_label.get("Reports (the fallback route)")
-    granted = sorted({role for role, _label, code in results
-                      if code == 200 and role.startswith(("Amazon", "Inventory", "Product"))})
+    granted = sorted({role for role, _label, code in results if code == 200})
+    denied = sorted({role for role, _label, code in results if code == 403}
+                    - set(granted))
 
     print("-" * 68)
-    if sellers == 403:
-        print("VERDICT: even the role-free Sellers endpoint is denied, so the app")
-        print("itself is not live for API calls against this seller account. Roles")
-        print("are a red herring. Re-authorize the app, and if that fails open a")
-        print("Developer Central support case with this output.")
-    elif fba == 200:
+    # The target endpoint is checked first and on its own. Every other canary
+    # is context: a 403 somewhere else while FBA Inventory answers is a role
+    # this app happens not to carry, not a problem with the sync.
+    if fba == 200:
         print("VERDICT: FBA Inventory works. Run the normal sync.")
+        print(f"   roles confirmed present : {', '.join(granted) or 'none'}")
+        if denied:
+            print(f"   roles denied (harmless) : {', '.join(denied)}")
+    elif all(code == 403 for _r, _l, code in results):
+        print("VERDICT: every endpoint is denied, so the app is probably not")
+        print("authorized for API calls against this seller account at all.")
+        print("Re-authorize the app and mint a fresh refresh token; if that")
+        print("fails, open a Developer Central support case with this output.")
     elif fba == 403:
         print("VERDICT: the token is valid but this app does not carry the role")
         print("that guards the FBA Inventory API.")
