@@ -107,8 +107,8 @@ class TestPooling(unittest.TestCase):
         self.assertEqual(out["fba_inbound"], 60)
         self.assertEqual(out["fba_skus_matched"],
                          ["R9-D7AT-S5WW", "R9-D7AT-S5WW-stickerless"])
-        # 52 raw, buffer max(2, ceil(5% of 52)) = 3
-        self.assertEqual(out["published_available"], 49)
+        # Published is the raw pooled figure; no buffer by default.
+        self.assertEqual(out["published_available"], 52)
 
     def test_only_the_stickerless_pool_has_stock(self):
         # The case that motivated this: the primary SKU is retired at zero and

@@ -17,8 +17,18 @@ WALMART_HOST = "https://marketplace.walmartapis.com"
 # Availability policy. Only these two pools are sellable through MCF.
 # Everything else Amazon reports (inbound, reserved, unfulfillable, researching)
 # is recorded for forecasting but NEVER published to the website.
-DEFAULT_SAFETY_BUFFER = int(os.getenv("DEFAULT_SAFETY_BUFFER", "2"))
-BUFFER_PERCENT = float(os.getenv("BUFFER_PERCENT", "0.05"))
+# No buffer by default: the site shows exactly Amazon + Walmart, which is the
+# rule Eshan ran by hand before this pipeline existed. The old default of
+# max(2, 5%) was never derived from Silverpot's sales - it withheld 90 of 1221
+# units, and its floor of 2 turned SKUs holding 2 and 3 real tins into
+# out-of-stock. A weekly hand-typed number was seven days stale and did not
+# oversell; a daily one is strictly fresher.
+#
+# Both are still env-overridable, and `safety_buffer` in sku_map.csv still
+# overrides per SKU - the place to put a real figure for a genuinely fast
+# mover, once `daily_depletion` has enough history to size one from data.
+DEFAULT_SAFETY_BUFFER = int(os.getenv("DEFAULT_SAFETY_BUFFER", "0"))
+BUFFER_PERCENT = float(os.getenv("BUFFER_PERCENT", "0"))
 
 SHEET_NAME = os.getenv("SHEET_NAME", "Silverpot Inventory")
 TAB_SNAPSHOTS = "snapshots"

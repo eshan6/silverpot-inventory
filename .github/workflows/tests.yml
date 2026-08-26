@@ -4,10 +4,16 @@ name: Tests
 # key and a wrong guess at an API field name. These tests pin the shapes, need
 # no credentials and touch no network, so they run on every push.
 
+# workflow_dispatch is here because on 2026-08-26 a push landed on a branch and
+# no run appeared for its SHA. With push and pull_request alone there is no way
+# to ask for a run on a commit that CI skipped, short of pushing an empty commit
+# to kick it - and this repo publishes stock numbers to a live storefront, so
+# merging on "it passed locally" is not the fallback that should be reached for.
 on:
   push:
     branches: ["**"]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   unittest:

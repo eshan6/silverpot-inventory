@@ -304,14 +304,15 @@ class TestPublishMath(unittest.TestCase):
         via_api = collector_main.build(self.sku_map(), api, wfs)[0]
         via_report = collector_main.build(self.sku_map(), report, wfs)[0]
         self.assertEqual(via_api["published_available"], via_report["published_available"])
-        self.assertEqual(via_api["published_available"], 51 - 3)  # max(2, 5% of 51)
+        # No buffer by default: the site shows exactly Amazon + Walmart.
+        self.assertEqual(via_api["published_available"], 41 + 10)
 
     def test_reserved_and_inbound_never_reach_published(self):
         report = {r["seller_sku"]: r for r in amazon.parse_report(MYI_REPORT)}
         out = collector_main.build(self.sku_map(), report, {})[0]
         self.assertEqual(out["raw_available"], 41)
         self.assertEqual(out["fba_inbound"], 126)
-        self.assertEqual(out["published_available"], 41 - 3)
+        self.assertEqual(out["published_available"], 41)
 
 
 # --------------------------------------------------------------------------
