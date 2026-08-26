@@ -23,9 +23,23 @@ summing them is legitimate. **Nothing else is sellable.** Inbound, reserved
 (customer order / transshipment / FC processing), unfulfillable and researching
 quantities are stored for forecasting and must never be published.
 
-The safety buffer exists because the feed is up to 24 hours stale and both pools
-drain from marketplace orders in the interim. Default `max(2, 5% of raw)`,
-overridable per SKU in `sku_map.csv`.
+**The safety buffer defaults to 0, so the site shows exactly Amazon + Walmart.**
+That is the rule Eshan ran by hand before this pipeline existed, and it is the
+rule now.
+
+It was not always. The collector shipped with `max(2, 5% of raw)` - round
+numbers never derived from Silverpot's sales - which silently replaced his rule
+with a different one. On 2026-08-26 it was withholding 90 of 1221 units, and
+its floor of 2 was turning SKUs holding 2 and 3 real tins into out-of-stock:
+most destructive exactly where stock is smallest. The staleness argument does
+not survive contact with the history either - the hand-typed number it replaced
+was seven days old and did not oversell, and a daily one is strictly fresher.
+
+The machinery is still there. `DEFAULT_SAFETY_BUFFER` and `BUFFER_PERCENT`
+remain env-overridable, and `safety_buffer` in `sku_map.csv` overrides per SKU.
+That column is the right home for a real figure on a genuinely fast mover, once
+`daily_depletion` has enough snapshot history to size one from data rather than
+from a round number. Do not reintroduce a blanket default without that data.
 
 **Do not remove or weaken these guards:**
 
