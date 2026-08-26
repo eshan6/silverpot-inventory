@@ -7,11 +7,16 @@ It does not need GitHub access to read or edit files, so there is no reason to
 expose your SKU map, stock levels, or inventory feed publicly.
 
 **Amazon's 403 is a wrong-role problem.** The FBA Inventory API is guarded by
-the **Amazon Fulfillment** role; the app was approved for *Inventory and Order
-Tracking*, which covers orders instead. Tick Amazon Fulfillment in Develop Apps,
-re-authorize, mint a fresh refresh token. No support case needed. Until that
-lands, the collector falls back to the Reports API automatically, so the sync
-still produces real Amazon numbers.
+the **Amazon Fulfillment** role; the developer profile was approved for
+*Inventory and Order Tracking*, which covers orders instead. The App
+registration page only lists roles the profile carries, so Amazon Fulfillment
+is not even shown as an option — it has to be added to the developer profile
+and resubmitted for evaluation first, then ticked on the app, then the app
+re-authorized with a fresh refresh token. Expect a review of a few days.
+
+The collector falls back to the Reports API on a 403, but do not assume that
+unblocks the sync: both FBA inventory reports sit under Amazon Fulfillment too.
+Run `--diagnose` to find out rather than guessing.
 
 ## Setup, once
 
