@@ -86,10 +86,24 @@ just never appears, with no error anywhere:
 
 - Loading the map fails hard if two rows claim the same Amazon SKU. One SKU
   landing on two products would attribute one tea's stock to another.
-- A run warns when an Amazon SKU holds fulfillable stock and no row claims it
-  (`WARN ... not in sku_map.csv, so it is NOT published`). That is the
-  reverse of the long-standing "no FBA match" warning, and it is how a newly
-  issued SKU gets noticed. Unmapped SKUs holding zero are counted, not listed.
+- **An Amazon SKU holding fulfillable stock that no row claims fails the run**
+  (exit 1, after everything has been written). That is the reverse of the
+  long-standing "no FBA match" warning, and it is how a newly issued SKU gets
+  noticed. It was a `WARN` inside a green run until 2026-08-26, which is
+  precisely how the stickerless pools stayed invisible for months: the warning
+  was correct and printed every day, in a log with no reason to open it. A red
+  run reaches an inbox.
+
+  The failure is a notification, not a data guard. Writes happen first and are
+  not withheld - a SKU the map does not claim cannot make the mapped SKUs'
+  numbers wrong, so refusing to publish them would cost real availability to
+  report a bookkeeping gap. `Commit feed` in the workflow therefore runs under
+  `if: always()`.
+
+  Unmapped SKUs holding zero are counted, not listed, and do not fail: retired
+  listings sit at zero forever, and failing on those would train everyone to
+  ignore the failure. The escape hatch is `ignored_amazon_skus.csv`, whose
+  reason column is the price of using it.
 
 Do not fold the suffix into the code as a rule. Amazon's naming is not a
 contract, and the alias column keeps a guess out of the join.

@@ -88,6 +88,33 @@ def build(sku_map, fba_by_sku: dict, wfs_by_sku: dict) -> list[dict]:
     return results
 
 
+def unmapped_stock_exit(unclaimed_with_stock: list[tuple[str, int, str]]) -> int:
+    """The run's exit code, given Amazon SKUs holding stock that nothing claims.
+
+    Deliberately non-zero. This is how the stickerless pools stayed invisible
+    for months: the warning was real, correct and printed on every run, inside
+    a green log nobody had reason to open. A red run reaches an inbox.
+
+    Everything is still written first. The mapped SKUs' numbers are unaffected
+    by a SKU the map does not claim, so withholding a correct sheet, feed and
+    website push would cost real availability to report a bookkeeping gap.
+    The failure is a notification, not a data guard.
+    """
+    if not unclaimed_with_stock:
+        return 0
+    lost = sum(q for _s, q, _a in unclaimed_with_stock)
+    print(
+        f"FAILED: {len(unclaimed_with_stock)} Amazon SKU(s) hold {lost} "
+        f"fulfillable unit(s) that no row in sku_map.csv claims, listed above. "
+        f"Today's numbers were written; the run is failed so this is seen. "
+        f"Resolve it by adding each SKU to amazon_sku_aliases on the row it "
+        f"belongs to, giving it its own row, or recording it in "
+        f"ignored_amazon_skus.csv with a reason.",
+        file=sys.stderr,
+    )
+    return 1
+
+
 def snapshot_rows(date: str, results: list[dict]) -> list[list]:
     rows = []
     for r in results:
@@ -251,7 +278,9 @@ def main() -> int:
 
     # The reverse of the "no FBA match" warning. An Amazon SKU holding stock
     # that no row in sku_map.csv claims is stock the storefront cannot see,
-    # and nothing else in this pipeline would ever mention it.
+    # and nothing else in this pipeline would ever mention it. It fails the
+    # run at the end - see unmapped_stock_exit.
+    unclaimed_with_stock: list[tuple[str, int, str]] = []
     if status["FBA"] == "ok":
         claimed = set(sku_map.by_amazon_sku)
         by_asin = sku_map.by_asin
@@ -261,6 +290,7 @@ def main() -> int:
         )
 
         with_stock = [u for u in unclaimed if u[1] > 0]
+        unclaimed_with_stock = with_stock
         if with_stock:
             lost = sum(q for _s, q, _a in with_stock)
             print(f"WARN {len(with_stock)} Amazon SKU(s) hold {lost} fulfillable "
@@ -321,7 +351,7 @@ def main() -> int:
 
     if args.dry_run:
         print(json.dumps(results, indent=2))
-        return 0
+        return unmapped_stock_exit(unclaimed_with_stock)
 
     from . import sheets
     expected = {"internal_code", "product_name", "sku", "walmart_sku", "asin",
@@ -394,7 +424,7 @@ def main() -> int:
         print(f"Website push skipped (not configured yet: "
               f"{', '.join(website.missing())})")
 
-    return 0
+    return unmapped_stock_exit(unclaimed_with_stock)
 
 
 if __name__ == "__main__":
