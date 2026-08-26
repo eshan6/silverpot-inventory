@@ -172,8 +172,16 @@ def main() -> int:
             az_token = amazon.get_access_token()
             fba_raw, fba_source = amazon.fetch_fba_inventory(az_token)
             fba_by_sku = {p["seller_sku"].upper(): p for p in fba_raw if p["seller_sku"]}
+            # Dropped here, at the source, before anything reads them. An
+            # ignored SKU's stock must not reach a product, the snapshot, the
+            # feed or a warning - so the cleanest guarantee is that the rest
+            # of the run never sees the record at all.
+            dropped = [s for s in fba_by_sku if s in ignored_skus]
+            for s in dropped:
+                del fba_by_sku[s]
             status["FBA"] = "ok"
-            print(f"Amazon: {len(fba_by_sku)} SKUs returned via {fba_source}")
+            print(f"Amazon: {len(fba_by_sku)} SKUs returned via {fba_source}"
+                  + (f" ({len(dropped)} ignored)" if dropped else ""))
         except Exception as exc:
             status["FBA"] = "failed"
             fba_source = None
@@ -251,17 +259,6 @@ def main() -> int:
             (sku, rec.get("fulfillable", 0), (rec.get("asin") or "").strip())
             for sku, rec in fba_by_sku.items() if sku not in claimed
         )
-
-        # SKUs deliberately set aside. They drop out of the warning, but their
-        # stock is still stated: ignoring a SKU is a decision about publishing,
-        # not a reason to stop counting what Amazon says is in the warehouse.
-        ignored_hits = [u for u in unclaimed if u[0] in ignored_skus]
-        unclaimed = [u for u in unclaimed if u[0] not in ignored_skus]
-        if ignored_hits:
-            held = sum(q for _s, q, _a in ignored_hits)
-            print(f"NOTE {len(ignored_hits)} Amazon SKU(s) ignored by "
-                  f"ignored_amazon_skus.csv, holding {held} fulfillable unit(s): " +
-                  ", ".join(f"{s}={q}" for s, q, _a in ignored_hits), file=sys.stderr)
 
         with_stock = [u for u in unclaimed if u[1] > 0]
         if with_stock:
