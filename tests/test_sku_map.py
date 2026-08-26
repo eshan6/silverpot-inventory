@@ -226,5 +226,40 @@ class TestIgnoredSkus(unittest.TestCase):
         self.assertEqual(mapped & ignored, set())
 
 
+class TestIgnoredStockNeverReachesAProduct(unittest.TestCase):
+    """The guarantee Eshan asked for, stated as a test.
+
+    An ignored SKU's units must not land on any product in the map, however
+    they arrive. Two independent barriers, tested separately, because one of
+    them silently failing would put stock on the wrong tea.
+    """
+
+    def sku_map(self):
+        return SkuMap(rows=[SkuRow(
+            internal_code="2229US", product_name="Ginger & Cinnamon",
+            format="tin", sku="06-2F24-Y8AJ", asin="B0DLV3KKSQ",
+            walmart_sku_override="", website_product_id="", safety_buffer=None,
+            amazon_sku_aliases=["06-2F24-Y8AJ-stickerless"])])
+
+    def test_an_ignored_sku_is_not_claimed_by_the_map(self):
+        # Barrier one: it resolves to no product, so build() cannot pick it up
+        # even if the record reaches build() somehow.
+        lookup = self.sku_map().by_amazon_sku
+        for sku in load_ignored_amazon_skus(IGNORED_SKUS_PATH):
+            self.assertNotIn(sku, lookup)
+
+    def test_same_asin_does_not_pull_the_stock_in(self):
+        # 6B-11XE-EH8Q shares 2229US's ASIN exactly. Matching is by SKU, never
+        # by ASIN - the ASIN is only ever used to describe, never to join.
+        by_sku = {
+            "06-2F24-Y8AJ": fba("06-2F24-Y8AJ", 54),
+            "6B-11XE-EH8Q": fba("6B-11XE-EH8Q", 54),   # ignored, same ASIN
+            "BK-7JXA-INV9": fba("BK-7JXA-INV9", 54),   # ignored, same ASIN
+        }
+        out = collector_main.build(self.sku_map(), by_sku, {})[0]
+        self.assertEqual(out["fba_fulfillable"], 54)      # not 108, not 162
+        self.assertEqual(out["fba_skus_matched"], ["06-2F24-Y8AJ"])
+
+
 if __name__ == "__main__":
     unittest.main()
