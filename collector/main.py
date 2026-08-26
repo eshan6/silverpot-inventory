@@ -379,10 +379,17 @@ def main() -> int:
               "numbers would understate real stock.", file=sys.stderr)
     elif website.configured():
         summary = website.push(results)
-        print(f"Website: {summary['updated']} products updated")
+        sent = summary["updated"] + len(summary.get("unconfirmed", []))
+        print(f"Website: {sent} products written "
+              f"({summary['updated']} confirmed by Supabase)")
         if summary["no_row_updated"]:
             print(f"  no row updated for: {', '.join(summary['no_row_updated'])}",
                   file=sys.stderr)
+        if summary.get("unconfirmed"):
+            # Accepted, but Supabase did not report which rows changed. The
+            # writes went out; the count is what is missing, not the data.
+            print(f"  {len(summary['unconfirmed'])} write(s) accepted without a "
+                  f"row count - check the site to confirm.", file=sys.stderr)
     else:
         print(f"Website push skipped (not configured yet: "
               f"{', '.join(website.missing())})")
