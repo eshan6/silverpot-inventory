@@ -44,7 +44,10 @@ def push(results: list[dict], dry_run: bool = False) -> dict:
     table = os.environ["SUPABASE_TABLE"]
     sku_col = os.environ["SUPABASE_SKU_COLUMN"]
     qty_col = os.environ["SUPABASE_QTY_COLUMN"]
-    synced_col = os.getenv("SUPABASE_SYNCED_COLUMN", "inventory_synced_at")
+    # Off unless the site actually has such a column. silverpottea.com does not:
+    # its product_inventory carries a trigger-managed `updated_at` instead, and
+    # naming a column that does not exist makes Supabase reject every write.
+    synced_col = os.getenv("SUPABASE_SYNCED_COLUMN", "")
     source_col = os.getenv("SUPABASE_SOURCE_COLUMN", "inventory_source")
     respect_manual = os.getenv("RESPECT_MANUAL_OVERRIDE", "true").lower() == "true"
 
