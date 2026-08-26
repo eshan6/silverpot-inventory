@@ -33,13 +33,21 @@ RESULTS = [
 
 
 class FakeResponse:
-    def __init__(self, rows, status_code=200):
+    """Mimics requests.Response closely enough to exercise the parsing."""
+
+    def __init__(self, rows, status_code=200, text=None, headers=None):
         self._rows = rows
         self.status_code = status_code
-        self.text = "[]" if rows == [] else "[{}]"
+        self.headers = headers or {"Content-Type": "application/json"}
+        if text is not None:
+            self.text = text
+        else:
+            self.text = "[]" if rows == [] else "[{}]"
 
     def json(self):
-        return self._rows
+        # requests raises on an unparseable body rather than returning None.
+        import json as _json
+        return _json.loads(self.text) if self._rows is None else self._rows
 
 
 class PushTestCase(unittest.TestCase):
@@ -132,6 +140,60 @@ class TestConfiguration(unittest.TestCase):
         with mock.patch.dict(os.environ, LIVE_ENV, clear=True):
             self.assertTrue(website.configured())
             self.assertEqual(website.missing(), [])
+
+
+class TestUnreadableResponses(PushTestCase):
+    """The live 2026-08-26 failure: a success status with a non-JSON body.
+
+    push() called resp.json() unconditionally and raised JSONDecodeError,
+    aborting the run after the writes had already been sent. A response the
+    code cannot read is not a reason to lose the work.
+    """
+
+    def push_raw(self, **response_kw):
+        calls = []
+
+        def fake_patch(url, headers=None, params=None, json=None, timeout=None):
+            calls.append(params)
+            return FakeResponse(None, **response_kw)
+
+        with mock.patch.dict(os.environ, LIVE_ENV, clear=True), \
+                mock.patch.object(website.requests, "patch", fake_patch):
+            return website.push(RESULTS), calls
+
+    def test_a_non_json_body_does_not_crash_the_run(self):
+        summary, calls = self.push_raw(text="<html>ok</html>",
+                                       headers={"Content-Type": "text/html"})
+        self.assertEqual(len(calls), 2)          # both writes still went out
+        self.assertEqual(summary["unconfirmed"], ["R9-D7AT-S5WW", "06-2F24-Y8AJ"])
+        self.assertEqual(summary["updated"], 0)
+
+    def test_204_no_content_is_unconfirmed_not_a_missing_row(self):
+        # Supabase honouring Prefer=return=minimal. The row may well have been
+        # updated; calling it "no row updated" would invent a failure.
+        summary, _calls = self.push_raw(status_code=204, text="")
+        self.assertEqual(summary["unconfirmed"], ["R9-D7AT-S5WW", "06-2F24-Y8AJ"])
+        self.assertEqual(summary["no_row_updated"], [])
+
+    def test_an_empty_body_is_unconfirmed(self):
+        summary, _calls = self.push_raw(text="   ")
+        self.assertEqual(summary["unconfirmed"], ["R9-D7AT-S5WW", "06-2F24-Y8AJ"])
+
+    def test_a_single_object_body_counts_as_one_updated_row(self):
+        summary, _calls = self.push_raw(text='{"id": 1}')
+        self.assertEqual(summary["updated"], 2)
+        self.assertEqual(summary["unconfirmed"], [])
+
+    def test_an_empty_array_still_means_nothing_matched(self):
+        # The distinction that matters: [] is Supabase telling us zero rows
+        # changed. That is information, and must stay a reported miss.
+        summary, _calls = self.push_raw(text="[]")
+        self.assertEqual(summary["no_row_updated"], ["R9-D7AT-S5WW", "06-2F24-Y8AJ"])
+        self.assertEqual(summary["unconfirmed"], [])
+
+    def test_a_4xx_still_raises_rather_than_being_called_unconfirmed(self):
+        with self.assertRaises(RuntimeError):
+            self.push_raw(status_code=400, text="permission denied")
 
 
 if __name__ == "__main__":

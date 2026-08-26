@@ -54,7 +54,7 @@ def push(results: list[dict], dry_run: bool = False) -> dict:
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    updated, skipped, unmatched = 0, 0, []
+    updated, skipped, unmatched, unknown = 0, 0, [], []
     for r in results:
         sku = r.get("sku")
         if not sku:
@@ -83,8 +83,20 @@ def push(results: list[dict], dry_run: bool = False) -> dict:
             raise RuntimeError(
                 f"Supabase write failed for {sku}: {resp.status_code} {resp.text[:300]}"
             )
-        rows = resp.json() if resp.text else []
-        if rows:
+        rows = _updated_rows(resp)
+        if rows is None:
+            # The write succeeded - Supabase returned a success status - but the
+            # body did not say which rows changed, so we cannot tell a real
+            # update from a SKU that matched nothing. Report it rather than
+            # guessing in either direction, and show what came back once so the
+            # cause is visible instead of inferred.
+            if not unknown:
+                print(f"  NOTE Supabase returned {resp.status_code} with an "
+                      f"unreadable body, so matched rows cannot be counted. "
+                      f"content-type={resp.headers.get('Content-Type', '?')} "
+                      f"body[:120]={resp.text[:120]!r}")
+            unknown.append(sku)
+        elif rows:
             updated += 1
         else:
             # Either the SKU isn't in the table, or the row is pinned to manual.
@@ -93,4 +105,23 @@ def push(results: list[dict], dry_run: bool = False) -> dict:
     if unmatched and respect_manual:
         skipped = len(unmatched)
 
-    return {"updated": updated, "no_row_updated": unmatched, "skipped_or_missing": skipped}
+    return {"updated": updated, "no_row_updated": unmatched,
+            "skipped_or_missing": skipped, "unconfirmed": unknown}
+
+
+def _updated_rows(resp) -> list | None:
+    """The rows a PATCH changed, or None when the response does not say.
+
+    With `Prefer: return=representation` PostgREST answers 200 and a JSON array
+    - empty when nothing matched. But a 204, an empty body, or any non-JSON
+    payload is also a success, and none of those name the rows. Treating an
+    unreadable body as "nothing matched" would invent a failure; crashing on it
+    loses the writes that already landed. So it is its own answer.
+    """
+    if resp.status_code == 204 or not (resp.text or "").strip():
+        return None
+    try:
+        parsed = resp.json()
+    except ValueError:
+        return None
+    return parsed if isinstance(parsed, list) else [parsed]
