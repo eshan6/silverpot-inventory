@@ -158,5 +158,32 @@ class TestShippedMap(unittest.TestCase):
             self.assertNotIn("stickerless", r.walmart_sku.lower())
 
 
+class TestUnmappedSkuIdentification(unittest.TestCase):
+    """The ASIN is what turns an unrecognised SKU into an actionable one."""
+
+    def setUp(self):
+        self.m = load_sku_map(write_map([
+            row("2201US", "A-1", asin="B0DLGWMV7R"),
+            row("2202US", "B-2", asin="B0DLH3RHHC"),
+        ]))
+
+    def test_asin_index_finds_the_product(self):
+        owners = self.m.by_asin["B0DLGWMV7R"]
+        self.assertEqual([o.internal_code for o in owners], ["2201US"])
+
+    def test_asin_index_keeps_every_row_sharing_an_asin(self):
+        # Collapsing to one would make an ambiguous answer look definite.
+        m = load_sku_map(write_map([
+            row("2201US", "A-1", asin="SHARED"),
+            row("2202US", "B-2", asin="SHARED"),
+        ]))
+        self.assertEqual([o.internal_code for o in m.by_asin["SHARED"]],
+                         ["2201US", "2202US"])
+
+    def test_rows_without_an_asin_are_absent_rather_than_keyed_on_blank(self):
+        m = load_sku_map(write_map([row("2201US", "A-1", asin="")]))
+        self.assertEqual(m.by_asin, {})
+
+
 if __name__ == "__main__":
     unittest.main()
