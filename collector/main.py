@@ -234,15 +234,30 @@ def main() -> int:
     # and nothing else in this pipeline would ever mention it.
     if status["FBA"] == "ok":
         claimed = set(sku_map.by_amazon_sku)
+        by_asin = sku_map.by_asin
         unclaimed = sorted(
-            (sku, rec.get("fulfillable", 0))
+            (sku, rec.get("fulfillable", 0), (rec.get("asin") or "").strip())
             for sku, rec in fba_by_sku.items() if sku not in claimed
         )
-        with_stock = [(s, q) for s, q in unclaimed if q > 0]
+        with_stock = [u for u in unclaimed if u[1] > 0]
         if with_stock:
-            print(f"WARN {len(with_stock)} Amazon SKU(s) hold fulfillable stock but "
-                  f"are not in sku_map.csv, so it is NOT published: " +
-                  ", ".join(f"{s}={q}" for s, q in with_stock), file=sys.stderr)
+            lost = sum(q for _s, q, _a in with_stock)
+            print(f"WARN {len(with_stock)} Amazon SKU(s) hold {lost} fulfillable "
+                  f"units but are not in sku_map.csv, so they are NOT published:",
+                  file=sys.stderr)
+            for sku, qty, asin in with_stock:
+                # The ASIN is what makes this actionable. If the map already
+                # lists that ASIN, the product is known and the SKU is just a
+                # second listing of it - one alias away from being counted.
+                owners = by_asin.get(asin.upper(), []) if asin else []
+                if owners:
+                    verdict = (f"same ASIN as {'/'.join(o.internal_code for o in owners)}"
+                               f" ({owners[0].product_name}) - add as an alias")
+                else:
+                    verdict = ("ASIN not in sku_map.csv - needs its own row"
+                               if asin else "no ASIN reported")
+                print(f"       {sku:<20} {qty:>4} units  asin {asin or '-':<12} {verdict}",
+                      file=sys.stderr)
         idle = len(unclaimed) - len(with_stock)
         if idle:
             print(f"NOTE {idle} further Amazon SKU(s) are unmapped but hold no "

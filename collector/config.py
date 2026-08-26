@@ -92,6 +92,21 @@ class SkuMap:
     def by_walmart_sku(self) -> dict[str, SkuRow]:
         return {r.walmart_sku.strip().upper(): r for r in self.rows if r.walmart_sku}
 
+    @property
+    def by_asin(self) -> dict[str, list[SkuRow]]:
+        """ASIN to the products listing under it.
+
+        A list, not a single row: the same ASIN can legitimately carry more
+        than one row, and silently keeping the first would make an ambiguous
+        answer look definite. This is how an unrecognised Amazon SKU gets
+        identified - the SKU string says nothing, the ASIN names the product.
+        """
+        out: dict[str, list[SkuRow]] = {}
+        for r in self.rows:
+            if r.asin:
+                out.setdefault(r.asin.strip().upper(), []).append(r)
+        return out
+
 
 def _to_bool(v: str) -> bool:
     return str(v).strip().upper() in {"TRUE", "1", "YES", "Y"}
