@@ -32,6 +32,12 @@ class SkuRow:
     `walmart_sku_override` exists for the day that stops being true - most
     likely when the FNSKU-to-manufacturer-barcode conversion issues new Amazon
     SKUs while the Walmart listings keep the old ones.
+
+    `amazon_sku_aliases` holds the *other* Amazon SKUs that are the same
+    physical product. Converting a listing to stickerless (commingled)
+    inventory issues a second seller SKU - Silverpot's carry a `-stickerless`
+    suffix - and Amazon reports each one's stock separately. Both pools ship
+    the same tea, so both count.
     """
     internal_code: str
     product_name: str
@@ -41,11 +47,28 @@ class SkuRow:
     walmart_sku_override: str
     website_product_id: str
     safety_buffer: int | None
+    amazon_sku_aliases: list[str] = field(default_factory=list)
     active: bool = True
 
     @property
     def amazon_sku(self) -> str:
         return self.sku
+
+    @property
+    def amazon_skus(self) -> list[str]:
+        """Every Amazon SKU whose FBA stock belongs to this product.
+
+        Order is primary first, then aliases. Case-insensitively deduplicated,
+        because counting one pool twice would overstate what is sellable.
+        """
+        out: list[str] = []
+        seen: set[str] = set()
+        for s in [self.sku, *self.amazon_sku_aliases]:
+            key = (s or "").strip().upper()
+            if key and key not in seen:
+                seen.add(key)
+                out.append(s.strip())
+        return out
 
     @property
     def walmart_sku(self) -> str:
@@ -58,7 +81,12 @@ class SkuMap:
 
     @property
     def by_amazon_sku(self) -> dict[str, SkuRow]:
-        return {r.amazon_sku.strip().upper(): r for r in self.rows if r.amazon_sku}
+        """Every Amazon SKU and alias, pointing at the product it belongs to."""
+        out: dict[str, SkuRow] = {}
+        for r in self.rows:
+            for s in r.amazon_skus:
+                out[s.upper()] = r
+        return out
 
     @property
     def by_walmart_sku(self) -> dict[str, SkuRow]:
@@ -69,9 +97,19 @@ def _to_bool(v: str) -> bool:
     return str(v).strip().upper() in {"TRUE", "1", "YES", "Y"}
 
 
+def _split_aliases(raw: str) -> list[str]:
+    """Aliases are separated by ; or | so a SKU containing a comma stays safe."""
+    parts = [p.strip() for chunk in (raw or "").split(";") for p in chunk.split("|")]
+    return [p for p in parts if p]
+
+
 def load_sku_map(path: Path = SKU_MAP_PATH) -> SkuMap:
     rows: list[SkuRow] = []
     seen_internal: set[str] = set()
+    # Every Amazon SKU string may belong to exactly one product. Two rows
+    # claiming the same SKU would quietly attribute one tea's stock to another,
+    # so it is a hard error rather than a warning.
+    claimed_amazon: dict[str, str] = {}
     with open(path, newline="", encoding="utf-8") as fh:
         for i, rec in enumerate(csv.DictReader(fh), start=2):
             code = (rec.get("internal_code") or "").strip()
@@ -84,19 +122,27 @@ def load_sku_map(path: Path = SKU_MAP_PATH) -> SkuMap:
             if not sku:
                 raise ValueError(f"sku_map.csv line {i}: sku is blank for '{code}'.")
             buf = (rec.get("safety_buffer") or "").strip()
-            rows.append(
-                SkuRow(
-                    internal_code=code,
-                    product_name=(rec.get("product_name") or "").strip(),
-                    format=(rec.get("format") or "").strip(),
-                    sku=sku,
-                    asin=(rec.get("asin") or "").strip(),
-                    walmart_sku_override=(rec.get("walmart_sku_override") or "").strip(),
-                    website_product_id=(rec.get("website_product_id") or "").strip(),
-                    safety_buffer=int(buf) if buf else None,
-                    active=_to_bool(rec.get("active", "TRUE")),
-                )
+            row = SkuRow(
+                internal_code=code,
+                product_name=(rec.get("product_name") or "").strip(),
+                format=(rec.get("format") or "").strip(),
+                sku=sku,
+                asin=(rec.get("asin") or "").strip(),
+                walmart_sku_override=(rec.get("walmart_sku_override") or "").strip(),
+                website_product_id=(rec.get("website_product_id") or "").strip(),
+                safety_buffer=int(buf) if buf else None,
+                amazon_sku_aliases=_split_aliases(rec.get("amazon_sku_aliases", "")),
+                active=_to_bool(rec.get("active", "TRUE")),
             )
+            for s in row.amazon_skus:
+                owner = claimed_amazon.get(s.upper())
+                if owner:
+                    raise ValueError(
+                        f"sku_map.csv line {i}: Amazon SKU '{s}' is already "
+                        f"claimed by '{owner}'. One SKU cannot belong to two products."
+                    )
+                claimed_amazon[s.upper()] = code
+            rows.append(row)
     return SkuMap(rows=rows)
 
 
