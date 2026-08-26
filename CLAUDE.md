@@ -82,11 +82,21 @@ reports, not FBA inventory. Approving the wrong role produces exactly this
 signature - LWA fine, endpoint denied. Several sellers hitting the same 403
 also needed *Product Listing* before it cleared.
 
-The fix Eshan has to make (a checkbox, not code): Seller Central > Partner
-Network > Develop Apps > Edit App, tick **Amazon Fulfillment**, save,
-re-authorize the app, and mint a **fresh refresh token** - an existing token
-keeps the roles it was minted with, which is why re-authorizing without
-changing the roles changed nothing.
+The fix is not code, and it is not a checkbox on the app either. **The role
+list on the App registration page only offers roles the developer profile was
+approved for.** Silverpot's profile carries Inventory and Order Tracking alone,
+so Amazon Fulfillment is not rendered as an option at all. Confirmed on
+2026-08-26 against the live Develop Apps page.
+
+So it goes profile first, app second:
+
+1. Solution Provider Portal > Developer Central > **developer profile** > Edit.
+   Add **Amazon Fulfillment** (and **Product Listing**), re-answer the use-case
+   and data-security questions, resubmit for evaluation. Manual review, days.
+2. Once approved, the checkbox appears on App registration. Tick it, save.
+3. Re-authorize the app and mint a **fresh refresh token** - an existing token
+   keeps the roles it was minted with, which is why re-authorizing twice
+   without changing the roles changed nothing.
 
 Two things in the code make that survivable:
 
@@ -94,14 +104,21 @@ Two things in the code make that survivable:
   token actually carries, so the missing checkbox is named rather than guessed.
 - `amazon.fetch_fba_inventory()` falls back to the Reports API
   (`GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA`, then `GET_AFN_INVENTORY_DATA`)
-  when the direct endpoint 403s. Different role set, same fulfillable numbers,
-  so the sync can run before the role lands. It is slower and has no reserved
-  breakdown. The route used is recorded in `public/inventory.json` as
-  `fba_source`, so every published number is traceable to how it was obtained.
+  when the direct endpoint 403s. It is slower and has no reserved breakdown.
+  The route used is recorded in `public/inventory.json` as `fba_source`, so
+  every published number is traceable to how it was obtained.
 
-The fallback is a bridge, not the destination. Once **Amazon Fulfillment** is
-granted, the direct API is used again automatically and `fba_source` goes back
-to `fba-inventory-api`.
+**Do not oversell the fallback.** It buys a different *role set*, not a way
+around the profile: `GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA` wants Pricing +
+Amazon Fulfillment, and `GET_AFN_INVENTORY_DATA` is an FBA report too. If the
+profile carries Inventory and Order Tracking alone, expect both to 403 as well
+- that role reaches orders and MFN quantities, not fulfillment-center stock.
+There is no known route to FBA fulfillable quantity without Amazon Fulfillment.
+`--diagnose` answers this definitively rather than by inference; run it before
+telling anyone the sync is unblocked.
+
+Once **Amazon Fulfillment** is granted, the direct API is used again
+automatically and `fba_source` goes back to `fba-inventory-api`.
 
 **Website push: not configured.** Waiting on Supabase table and column names
 from the silverpottea.com Lovable project. See `LOVABLE_PROMPT.md`.

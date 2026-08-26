@@ -200,10 +200,15 @@ Watch `sales@dcgnorthamerica.com` — that's the email on the case.
 
 When approved:
 
-1. Go to Developer Central → **Add new app client**
-2. Name: `silverpot-inventory`, tick **Amazon Fulfillment** (*not* Inventory and
-   Order Tracking — that role covers orders, not FBA inventory, and ticking it
-   alone is what produced the 403). Add **Product Listing** if it stays denied.
+1. Check your **developer profile** carries the **Amazon Fulfillment** role
+   (*not* Inventory and Order Tracking — that role covers orders, not FBA
+   inventory, and having it alone is what produced the 403). Add **Product
+   Listing** too. If Amazon Fulfillment is missing: Developer Central →
+   developer profile → Edit → add the role → resubmit for evaluation. The App
+   registration page only ever lists roles the profile was approved for, so a
+   role you never requested is absent from the page rather than unticked.
+2. Once the profile is approved, Developer Central → **Add new app client**.
+   Name: `silverpot-inventory`, and tick the roles, which now appear.
 3. Amazon shows you a **client ID** and **client secret** — save both
 4. On the app row, dropdown → **Authorize**. This gives you a **refresh token**
    starting `Atzr|`. Save it. A refresh token keeps the roles it was minted

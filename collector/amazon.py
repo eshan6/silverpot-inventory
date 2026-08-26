@@ -64,10 +64,12 @@ REPORT_POLL_CEILING = 420
 
 ROLE_HINT = (
     "The FBA Inventory API is guarded by the 'Amazon Fulfillment' role. "
-    "Seller Central > Partner Network > Develop Apps > Edit App: tick "
-    "'Amazon Fulfillment' (add 'Product Listing' too if it stays denied), "
-    "save, then re-authorize the app and mint a fresh refresh token - an "
-    "existing token keeps the roles it was minted with. "
+    "If that role is not even offered on the App registration page, the "
+    "developer profile does not carry it: Developer Central > developer "
+    "profile > Edit, add 'Amazon Fulfillment' (and 'Product Listing'), "
+    "resubmit for evaluation, and wait for the review. Then tick it on the "
+    "app, re-authorize, and mint a fresh refresh token - an existing token "
+    "keeps the roles it was minted with. "
     "Run `python -m collector.main --diagnose` to confirm."
 )
 
