@@ -60,7 +60,14 @@ jobs:
             python -m collector.main
           fi
 
+      # always(), because unmapped Amazon stock fails the run *after* writing
+      # everything. Without this the feed would be computed and then thrown
+      # away, leaving the static JSON stale while Supabase and the sheet are
+      # current. Safe in the other failure cases too: when both marketplaces
+      # fail the collector returns before writing, so there is nothing staged
+      # and this step reports no change.
       - name: Commit feed
+        if: always()
         run: |
           git config user.name  "silverpot-inventory-bot"
           git config user.email "actions@github.com"
