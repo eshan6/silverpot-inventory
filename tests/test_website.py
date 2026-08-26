@@ -162,8 +162,10 @@ class TestUnreadableResponses(PushTestCase):
             return website.push(RESULTS), calls
 
     def test_a_non_json_body_does_not_crash_the_run(self):
-        summary, calls = self.push_raw(text="<html>ok</html>",
-                                       headers={"Content-Type": "text/html"})
+        # Not HTML - that is a wrong endpoint and raises. This is a success
+        # whose body simply is not parseable, which must not lose the run.
+        summary, calls = self.push_raw(text="OK",
+                                       headers={"Content-Type": "text/plain"})
         self.assertEqual(len(calls), 2)          # both writes still went out
         self.assertEqual(summary["unconfirmed"], ["R9-D7AT-S5WW", "06-2F24-Y8AJ"])
         self.assertEqual(summary["updated"], 0)
@@ -194,6 +196,41 @@ class TestUnreadableResponses(PushTestCase):
     def test_a_4xx_still_raises_rather_than_being_called_unconfirmed(self):
         with self.assertRaises(RuntimeError):
             self.push_raw(status_code=400, text="permission denied")
+
+
+class TestWrongEndpoint(PushTestCase):
+    """The 2026-08-26 live run: SUPABASE_URL pointed at the website.
+
+    silverpottea.com is a Vite single-page app, so it answers 200 with
+    index.html for any path. All 36 patches were swallowed by a web page and
+    the run reported them as written. A wrong endpoint must fail loudly on the
+    first request, not be counted as 36 successful writes.
+    """
+
+    HTML = ('<!DOCTYPE html>\n<html lang="en">\n  <head>\n'
+            '    <meta charset="UTF-8" />\n')
+
+    def push_raw(self, **response_kw):
+        def fake_patch(url, headers=None, params=None, json=None, timeout=None):
+            return FakeResponse(None, **response_kw)
+
+        with mock.patch.dict(os.environ, LIVE_ENV, clear=True), \
+                mock.patch.object(website.requests, "patch", fake_patch):
+            return website.push(RESULTS)
+
+    def test_an_html_page_raises_rather_than_counting_as_written(self):
+        with self.assertRaises(website.NotSupabase) as ctx:
+            self.push_raw(text=self.HTML,
+                          headers={"Content-Type": "text/html; charset=utf-8"})
+        self.assertIn("SUPABASE_URL", str(ctx.exception))
+
+    def test_html_is_caught_even_without_a_content_type(self):
+        with self.assertRaises(website.NotSupabase):
+            self.push_raw(text=self.HTML, headers={})
+
+    def test_json_bodies_are_unaffected(self):
+        summary, _calls = self.push()
+        self.assertEqual(summary["updated"], 2)
 
 
 if __name__ == "__main__":

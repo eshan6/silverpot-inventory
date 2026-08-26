@@ -109,16 +109,35 @@ def push(results: list[dict], dry_run: bool = False) -> dict:
             "skipped_or_missing": skipped, "unconfirmed": unknown}
 
 
+class NotSupabase(RuntimeError):
+    """The endpoint answered, but it is not a Supabase REST API."""
+
+
 def _updated_rows(resp) -> list | None:
     """The rows a PATCH changed, or None when the response does not say.
 
     With `Prefer: return=representation` PostgREST answers 200 and a JSON array
-    - empty when nothing matched. But a 204, an empty body, or any non-JSON
-    payload is also a success, and none of those name the rows. Treating an
-    unreadable body as "nothing matched" would invent a failure; crashing on it
-    loses the writes that already landed. So it is its own answer.
+    - empty when nothing matched. A 204 or an empty body is also a success and
+    simply does not name the rows, so it is its own answer: treating it as
+    "nothing matched" would invent a failure.
+
+    An HTML body is different in kind. PostgREST never returns HTML, so a page
+    coming back means the request never reached Supabase at all - it hit a web
+    server that answers 200 with index.html for any path. That is a wrong
+    SUPABASE_URL, and it must fail rather than be logged as a write, because
+    every request will be quietly swallowed by a single-page app.
     """
-    if resp.status_code == 204 or not (resp.text or "").strip():
+    body = (resp.text or "").strip()
+    ctype = (resp.headers.get("Content-Type") or "").lower()
+    if "html" in ctype or body[:1] == "<":
+        raise NotSupabase(
+            f"expected a Supabase REST response, got {resp.status_code} "
+            f"{ctype or 'no content-type'} starting {body[:80]!r}. "
+            "SUPABASE_URL is almost certainly pointing at the website rather "
+            "than the Supabase project API URL "
+            "(Project Settings > API > Project URL, https://<ref>.supabase.co)."
+        )
+    if resp.status_code == 204 or not body:
         return None
     try:
         parsed = resp.json()
