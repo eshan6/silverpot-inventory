@@ -40,10 +40,18 @@ def build(sku_map, fba_by_sku: dict, wfs_by_sku: dict) -> list[dict]:
     for row in sku_map.rows:
         if not row.active:
             continue
-        fba = fba_by_sku.get(row.amazon_sku.strip().upper(), {})
+        # A product can hold stock under several Amazon SKUs at once - the
+        # original and its stickerless twin - each with its own pool. Amazon
+        # reports them separately; both ship the same tea, so they are summed.
+        matched = [(s, fba_by_sku[s.upper()]) for s in row.amazon_skus
+                   if s.upper() in fba_by_sku]
+
+        def fba_sum(field: str) -> int:
+            return sum(rec.get(field, 0) for _s, rec in matched)
+
         wfs = wfs_by_sku.get(row.walmart_sku.strip().upper(), {})
 
-        fba_fulfillable = fba.get("fulfillable", 0)
+        fba_fulfillable = fba_sum("fulfillable")
         wfs_ats = wfs.get("available_to_sell", 0)
         raw_available = fba_fulfillable + wfs_ats
         buffer = compute_buffer(row, raw_available)
@@ -63,16 +71,17 @@ def build(sku_map, fba_by_sku: dict, wfs_by_sku: dict) -> list[dict]:
             "raw_available": raw_available,
             "safety_buffer": buffer,
             "published_available": published,
-            "fba_inbound": (fba.get("inbound_working", 0) + fba.get("inbound_shipped", 0)
-                            + fba.get("inbound_receiving", 0)),
-            "fba_reserved": fba.get("reserved_total", 0),
-            "fba_unfulfillable": fba.get("unfulfillable", 0),
-            "fba_researching": fba.get("researching", 0),
+            "fba_inbound": (fba_sum("inbound_working") + fba_sum("inbound_shipped")
+                            + fba_sum("inbound_receiving")),
+            "fba_reserved": fba_sum("reserved_total"),
+            "fba_unfulfillable": fba_sum("unfulfillable"),
+            "fba_researching": fba_sum("researching"),
+            "fba_skus_matched": [s for s, _rec in matched],
             "wfs_reserved": wfs.get("reserved", 0),
             "wfs_inbound": wfs.get("inbound", 0),
             "wfs_aged_over_270d": wfs.get("aged_over_270d", 0),
             "wfs_stock_status": wfs.get("stock_status", ""),
-            "matched_fba": bool(fba),
+            "matched_fba": bool(matched),
             "matched_wfs": bool(wfs),
         })
     return results
@@ -209,6 +218,35 @@ def main() -> int:
               file=sys.stderr)
     if diverged:
         print(f"NOTE Walmart SKU overridden for: {', '.join(diverged)}", file=sys.stderr)
+
+    # A product whose stock arrived under more than one Amazon SKU. Worth
+    # naming: it is the difference between the published number and the one
+    # the primary SKU alone would have given.
+    pooled = [r for r in results if len(r["fba_skus_matched"]) > 1]
+    if pooled:
+        print(f"NOTE FBA stock pooled across multiple Amazon SKUs "
+              f"({len(pooled)}): " +
+              ", ".join(f"{r['internal_code']}[{'+'.join(r['fba_skus_matched'])}]"
+                        for r in pooled), file=sys.stderr)
+
+    # The reverse of the "no FBA match" warning. An Amazon SKU holding stock
+    # that no row in sku_map.csv claims is stock the storefront cannot see,
+    # and nothing else in this pipeline would ever mention it.
+    if status["FBA"] == "ok":
+        claimed = set(sku_map.by_amazon_sku)
+        unclaimed = sorted(
+            (sku, rec.get("fulfillable", 0))
+            for sku, rec in fba_by_sku.items() if sku not in claimed
+        )
+        with_stock = [(s, q) for s, q in unclaimed if q > 0]
+        if with_stock:
+            print(f"WARN {len(with_stock)} Amazon SKU(s) hold fulfillable stock but "
+                  f"are not in sku_map.csv, so it is NOT published: " +
+                  ", ".join(f"{s}={q}" for s, q in with_stock), file=sys.stderr)
+        idle = len(unclaimed) - len(with_stock)
+        if idle:
+            print(f"NOTE {idle} further Amazon SKU(s) are unmapped but hold no "
+                  f"fulfillable stock.", file=sys.stderr)
 
     # A SKU that vanishes from one marketplace but not the other is almost
     # always a listing problem, not an inventory problem. Surface it loudly.

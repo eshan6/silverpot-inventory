@@ -56,10 +56,29 @@ tests/         payload-shape tests; no credentials, no network
 ```
 
 `internal_code` (`2201US`, `2301US`) is the join key for the whole system and
-matches Eshan's existing Flask sales tracker. Amazon and Walmart currently use
-identical SKU strings, so one `sku` column serves both;
-`walmart_sku_override` exists for when the FNSKU-to-manufacturer-barcode
-migration issues new Amazon SKUs while Walmart keeps the old ones.
+matches Eshan's existing Flask sales tracker. The `sku` column is the primary
+marketplace SKU and serves Walmart too; `walmart_sku_override` exists for when
+that stops being true.
+
+**One product can hold stock under several Amazon SKUs at once.** Converting a
+listing to stickerless (commingled) inventory issues a *second* seller SKU -
+Silverpot's carry a `-stickerless` suffix - and Amazon reports each pool
+separately under its own SKU. Both ship the same tea, so
+`amazon_sku_aliases` (`;` or `|` separated) lists the extra SKUs and
+`main.build()` **sums** every matching pool into one `fba_fulfillable`.
+
+Two things guard this, because the failure mode is silent - unmatched stock
+just never appears, with no error anywhere:
+
+- Loading the map fails hard if two rows claim the same Amazon SKU. One SKU
+  landing on two products would attribute one tea's stock to another.
+- A run warns when an Amazon SKU holds fulfillable stock and no row claims it
+  (`WARN ... not in sku_map.csv, so it is NOT published`). That is the
+  reverse of the long-standing "no FBA match" warning, and it is how a newly
+  issued SKU gets noticed. Unmapped SKUs holding zero are counted, not listed.
+
+Do not fold the suffix into the code as a rule. Amazon's naming is not a
+contract, and the alias column keeps a guess out of the join.
 
 ## Current status
 
