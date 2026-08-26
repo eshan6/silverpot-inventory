@@ -24,7 +24,8 @@ import sys
 from datetime import datetime, timezone
 
 from . import amazon, net, walmart
-from .config import BUFFER_PERCENT, DEFAULT_SAFETY_BUFFER, PUBLIC_DIR, load_sku_map
+from .config import (BUFFER_PERCENT, DEFAULT_SAFETY_BUFFER, PUBLIC_DIR,
+                     load_ignored_amazon_skus, load_sku_map)
 
 
 def compute_buffer(row, raw_available: int) -> int:
@@ -133,7 +134,18 @@ def main() -> int:
     args = ap.parse_args()
 
     sku_map = load_sku_map()
+    ignored_skus = load_ignored_amazon_skus()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    # A SKU cannot be both mapped to a product and ignored. That would count
+    # its stock and disown it at once, and the run would silently pick one.
+    contradictions = sorted(set(ignored_skus) & set(sku_map.by_amazon_sku))
+    if contradictions:
+        raise ValueError(
+            "These Amazon SKUs are both mapped in sku_map.csv and listed in "
+            f"ignored_amazon_skus.csv: {', '.join(contradictions)}. "
+            "Remove them from one file or the other."
+        )
 
     if net.apply_ipv4_preference():
         print("Network: forcing IPv4")
@@ -239,6 +251,18 @@ def main() -> int:
             (sku, rec.get("fulfillable", 0), (rec.get("asin") or "").strip())
             for sku, rec in fba_by_sku.items() if sku not in claimed
         )
+
+        # SKUs deliberately set aside. They drop out of the warning, but their
+        # stock is still stated: ignoring a SKU is a decision about publishing,
+        # not a reason to stop counting what Amazon says is in the warehouse.
+        ignored_hits = [u for u in unclaimed if u[0] in ignored_skus]
+        unclaimed = [u for u in unclaimed if u[0] not in ignored_skus]
+        if ignored_hits:
+            held = sum(q for _s, q, _a in ignored_hits)
+            print(f"NOTE {len(ignored_hits)} Amazon SKU(s) ignored by "
+                  f"ignored_amazon_skus.csv, holding {held} fulfillable unit(s): " +
+                  ", ".join(f"{s}={q}" for s, q, _a in ignored_hits), file=sys.stderr)
+
         with_stock = [u for u in unclaimed if u[1] > 0]
         if with_stock:
             lost = sum(q for _s, q, _a in with_stock)

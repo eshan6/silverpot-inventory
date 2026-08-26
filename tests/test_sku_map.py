@@ -17,7 +17,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from collector import main as collector_main  # noqa: E402
-from collector.config import SKU_MAP_PATH, SkuMap, SkuRow, load_sku_map  # noqa: E402
+from collector.config import (  # noqa: E402
+    IGNORED_SKUS_PATH, SKU_MAP_PATH, SkuMap, SkuRow,
+    load_ignored_amazon_skus, load_sku_map,
+)
 
 FIELDS = ["internal_code", "product_name", "format", "sku", "amazon_sku_aliases",
           "asin", "walmart_sku_override", "website_product_id", "safety_buffer",
@@ -183,6 +186,44 @@ class TestUnmappedSkuIdentification(unittest.TestCase):
     def test_rows_without_an_asin_are_absent_rather_than_keyed_on_blank(self):
         m = load_sku_map(write_map([row("2201US", "A-1", asin="")]))
         self.assertEqual(m.by_asin, {})
+
+
+class TestIgnoredSkus(unittest.TestCase):
+    """SKUs deliberately set aside, and the shipped ignore list."""
+
+    def write_ignored(self, rows):
+        fh = tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, newline="")
+        w = csv.DictWriter(fh, fieldnames=["amazon_sku", "reason", "noted_on"])
+        w.writeheader()
+        for r in rows:
+            w.writerow(r)
+        fh.close()
+        return Path(fh.name)
+
+    def test_loads_sku_and_reason_uppercased(self):
+        p = self.write_ignored([
+            {"amazon_sku": "ab-1", "reason": "retired parent", "noted_on": "2026-08-26"}])
+        self.assertEqual(load_ignored_amazon_skus(p), {"AB-1": "retired parent"})
+
+    def test_missing_file_is_an_empty_list_not_an_error(self):
+        self.assertEqual(load_ignored_amazon_skus(Path("/nonexistent.csv")), {})
+
+    def test_blank_rows_are_skipped(self):
+        p = self.write_ignored([{"amazon_sku": "", "reason": "x", "noted_on": ""}])
+        self.assertEqual(load_ignored_amazon_skus(p), {})
+
+    def test_shipped_list_holds_the_four_retired_parents(self):
+        ignored = load_ignored_amazon_skus(IGNORED_SKUS_PATH)
+        self.assertEqual(sorted(ignored), ["6B-11XE-EH8Q", "BK-7JXA-INV9",
+                                           "BL-35VI-X9JM", "CU-PM7T-6DX9"])
+        for reason in ignored.values():
+            self.assertTrue(reason, "every ignored SKU needs a stated reason")
+
+    def test_nothing_is_both_mapped_and_ignored(self):
+        # The run refuses to start on this contradiction; catch it here first.
+        mapped = set(load_sku_map(SKU_MAP_PATH).by_amazon_sku)
+        ignored = set(load_ignored_amazon_skus(IGNORED_SKUS_PATH))
+        self.assertEqual(mapped & ignored, set())
 
 
 if __name__ == "__main__":

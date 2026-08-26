@@ -6,6 +6,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKU_MAP_PATH = REPO_ROOT / "sku_map.csv"
+IGNORED_SKUS_PATH = REPO_ROOT / "ignored_amazon_skus.csv"
 PUBLIC_DIR = REPO_ROOT / "public"
 
 US_MARKETPLACE_ID = "ATVPDKIKX0DER"
@@ -159,6 +160,29 @@ def load_sku_map(path: Path = SKU_MAP_PATH) -> SkuMap:
                 claimed_amazon[s.upper()] = code
             rows.append(row)
     return SkuMap(rows=rows)
+
+
+def load_ignored_amazon_skus(path: Path = IGNORED_SKUS_PATH) -> dict[str, str]:
+    """Amazon SKUs deliberately left unmapped, keyed by SKU to the reason why.
+
+    These are stock the pipeline knowingly does not publish - retired parent
+    SKUs and the like. Recording the decision in a file, with a reason and a
+    date, is the point: it is reversible, reviewable, and it stops the run
+    from re-asking a question that has already been answered.
+
+    An ignored SKU is still reported, quietly, with its quantity. Ignoring is
+    not the same as not looking, and a retired SKU that suddenly gains stock
+    is worth seeing.
+    """
+    if not path.exists():
+        return {}
+    out: dict[str, str] = {}
+    with open(path, newline="", encoding="utf-8") as fh:
+        for rec in csv.DictReader(fh):
+            sku = (rec.get("amazon_sku") or "").strip()
+            if sku:
+                out[sku.upper()] = (rec.get("reason") or "").strip()
+    return out
 
 
 def require_env(*names: str) -> dict[str, str]:
