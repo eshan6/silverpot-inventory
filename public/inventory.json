@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-27T06:31:01+00:00",
+  "generated_at": "2026-08-27T16:37:43+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -31,12 +31,12 @@
       "sku": "NF-TRB8-GCE3",
       "asin": "B0DLH3RHHC",
       "website_product_id": "",
-      "available": 9,
+      "available": 8,
       "in_stock": true,
-      "fba": 9,
+      "fba": 8,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 16.0,
       "inbound": 0
     },
     {
@@ -381,7 +381,7 @@
       "fba": 54,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 54.0,
+      "days_of_cover": 108.0,
       "inbound": 1
     },
     {
@@ -441,7 +441,7 @@
       "fba": 42,
       "wfs": 18,
       "buffer": 0,
-      "days_of_cover": 60.0,
+      "days_of_cover": 120.0,
       "inbound": 0
     },
     {
@@ -486,7 +486,7 @@
       "fba": 103,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 103.0,
+      "days_of_cover": 206.0,
       "inbound": 7
     },
     {
@@ -501,7 +501,7 @@
       "fba": 112,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 18.7,
+      "days_of_cover": 37.3,
       "inbound": 2
     },
     {
