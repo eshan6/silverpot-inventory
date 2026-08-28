@@ -2,9 +2,24 @@ name: Daily inventory sync
 
 on:
   schedule:
-    # 05:30 UTC = 01:30 America/New_York (EDT). Actions cron can drift by
-    # 10-30 minutes under load; that is fine for a daily inventory pull.
-    - cron: "30 5 * * *"
+    # Two slots, both on deliberately odd minutes. GitHub runs scheduled
+    # workflows on shared infrastructure and delays them worst at the times
+    # everyone else picks - :00 above all, :30 next. The original "30 5 * * *"
+    # held to 21-30 minutes late for a week and then went badly wrong:
+    #
+    #   2026-08-26  05:58 UTC    28 min late
+    #   2026-08-27  16:37 UTC    11 h 07 min late
+    #   2026-08-28  not fired by 14:56 UTC
+    #
+    # An 11-hour delay on a storefront is a day-old stock number, which is the
+    # thing this pipeline exists to prevent.
+    #
+    # 05:13 UTC = 01:13 America/New_York (EDT). The 13:43 slot is a safety net,
+    # not a second sync: if the morning run already published today's feed, the
+    # guard step below skips the pull entirely, so the append-only snapshots
+    # tab still gets exactly one set of rows on a normal day.
+    - cron: "13 5 * * *"
+    - cron: "43 13 * * *"
   workflow_dispatch:
     inputs:
       probe:
@@ -36,7 +51,29 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      # The second daily slot exists only to cover a missed or badly delayed
+      # first one. If the feed committed to main already carries today's date,
+      # the morning run worked and there is nothing to do - so skip rather than
+      # write a second set of snapshot rows for the same day.
+      #
+      # Schedule only. A manual run is someone asking for this explicitly, and
+      # must never be silently skipped. When this step does not run, its output
+      # is empty, which the condition below treats as "not done".
+      - name: Skip if today's feed is already published
+        id: already
+        if: github.event_name == 'schedule'
+        run: |
+          today=$(date -u +%Y-%m-%d)
+          if grep -q "\"generated_at\": \"$today" public/inventory.json 2>/dev/null; then
+            echo "Feed for $today is already committed - skipping this run."
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No feed for $today yet - running the sync."
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Pull and publish inventory
+        if: steps.already.outputs.done != 'true'
         env:
           LWA_CLIENT_ID: ${{ secrets.LWA_CLIENT_ID }}
           LWA_CLIENT_SECRET: ${{ secrets.LWA_CLIENT_SECRET }}
