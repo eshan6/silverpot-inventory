@@ -160,9 +160,19 @@ actually returns. If it isn't in `ATS_FIELDS`, add it at the top of the list.
 Then verify against Seller Central and Seller Center by hand for about a week
 before pointing the website at it.
 
-The workflow runs at 05:30 UTC (01:30 ET). GitHub disables scheduled workflows
-after 60 days of repo inactivity, and the daily commit of `inventory.json`
-counts as activity, so this self-sustains as long as stock is moving.
+The workflow runs at 05:13 UTC (01:13 ET), with a 13:43 UTC safety net that
+skips itself if the morning run already published today's feed. Both are on odd
+minutes on purpose: GitHub delays scheduled workflows worst at the times
+everyone picks, and the old `30 5 * * *` slot ran 11 hours late on 2026-08-27
+and did not fire at all on 2026-08-28 before being replaced.
+
+Expect the scheduled runs to be some minutes late regardless; that is normal for
+Actions cron and harmless for a daily pull. To see them, filter the Actions page
+by **Event: schedule** - manual runs otherwise bury them.
+
+GitHub disables scheduled workflows after 60 days of repo inactivity, and the
+daily commit of `inventory.json` counts as activity, so this self-sustains as
+long as stock is moving.
 
 ### Step 6 — Dashboard hosting
 

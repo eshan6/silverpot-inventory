@@ -50,6 +50,22 @@ from a round number. Do not reintroduce a blanket default without that data.
 - `snapshots` is append-only. Never overwrite it. The time series is what makes
   days-of-cover possible, and days-of-cover is the reorder trigger that matters
   once FCL ocean freight puts 60-90 days between decision and stock landing.
+- The workflow's second daily slot (13:43 UTC) **skips itself** when the feed on
+  main already carries today's date. It is a safety net for a missed morning
+  run, not a second sync. Dropping that guard would append a second set of
+  snapshot rows every normal day. Nothing would break - `read_prior_published`
+  keys by date, so repeats overwrite rather than stack and days-of-cover is
+  unaffected - but the tab would grow at twice the rate for nothing. The guard
+  is scoped to `schedule`, because a manual run is someone asking explicitly and
+  must never be silently skipped.
+
+**On the schedule itself:** cron fired 21-30 minutes late every day for a week,
+then 11 hours late on 2026-08-27 and not at all on 2026-08-28. GitHub runs
+scheduled workflows on shared infrastructure and delays them worst at popular
+times, so both slots sit on odd minutes (`13 5`, `43 13`) rather than `:00` or
+`:30`. Expect some lateness regardless; it is normal and harmless for a daily
+pull. Manual `workflow_dispatch` has never failed to fire and is the reliable
+way to force a run.
 
 ## Architecture
 
@@ -65,7 +81,7 @@ collector/
 sku_map.csv    the identity layer - 36 rows, hand-maintained
 public/        static dashboard + inventory.json feed
 tests/         payload-shape tests; no credentials, no network
-.github/workflows/inventory.yml   daily cron 05:30 UTC
+.github/workflows/inventory.yml   daily cron 05:13 UTC + 13:43 safety net
 .github/workflows/tests.yml       unit tests on every push
 ```
 
