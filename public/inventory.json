@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-27T16:37:43+00:00",
+  "generated_at": "2026-08-28T14:58:31+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -121,12 +121,12 @@
       "sku": "UZ-LPS9-WKKW",
       "asin": "B0DLTGRYKT",
       "website_product_id": "",
-      "available": 33,
+      "available": 31,
       "in_stock": true,
-      "fba": 21,
-      "wfs": 12,
+      "fba": 20,
+      "wfs": 11,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 31.0,
       "inbound": 0
     },
     {
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 54,
+      "available": 53,
       "in_stock": true,
-      "fba": 54,
+      "fba": 53,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 53.0,
       "inbound": 0
     },
     {
@@ -301,12 +301,12 @@
       "sku": "TG-34ZG-5OMZ",
       "asin": "B0DLTZBL9P",
       "website_product_id": "",
-      "available": 16,
+      "available": 15,
       "in_stock": true,
-      "fba": 16,
+      "fba": 15,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 30.0,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 54,
+      "available": 53,
       "in_stock": true,
-      "fba": 54,
+      "fba": 53,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 108.0,
+      "days_of_cover": 53.0,
       "inbound": 1
     },
     {
@@ -511,9 +511,9 @@
       "sku": "X4-NBPO-69NU",
       "asin": "",
       "website_product_id": "",
-      "available": 182,
+      "available": 188,
       "in_stock": true,
-      "fba": 95,
+      "fba": 101,
       "wfs": 87,
       "buffer": 0,
       "days_of_cover": null,
@@ -526,13 +526,13 @@
       "sku": "M6-VQP9-KZDY",
       "asin": "",
       "website_product_id": "",
-      "available": 135,
+      "available": 141,
       "in_stock": true,
-      "fba": 106,
+      "fba": 112,
       "wfs": 29,
       "buffer": 0,
       "days_of_cover": null,
-      "inbound": 1
+      "inbound": 2
     },
     {
       "internal_code": "2329US",
