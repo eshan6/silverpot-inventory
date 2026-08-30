@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-29T11:37:45+00:00",
+  "generated_at": "2026-08-30T10:27:43+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -21,7 +21,7 @@
       "fba": 49,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 54.0,
+      "days_of_cover": 72.0,
       "inbound": 0
     },
     {
@@ -36,7 +36,7 @@
       "fba": 7,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 10.5,
+      "days_of_cover": 14.0,
       "inbound": 0
     },
     {
@@ -126,7 +126,7 @@
       "fba": 20,
       "wfs": 11,
       "buffer": 0,
-      "days_of_cover": 46.5,
+      "days_of_cover": 62.0,
       "inbound": 0
     },
     {
@@ -171,7 +171,7 @@
       "fba": 6,
       "wfs": 55,
       "buffer": 0,
-      "days_of_cover": 91.5,
+      "days_of_cover": 122.0,
       "inbound": 0
     },
     {
@@ -231,7 +231,7 @@
       "fba": 17,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 25.5,
+      "days_of_cover": 34.0,
       "inbound": 0
     },
     {
@@ -261,7 +261,7 @@
       "fba": 0,
       "wfs": 1,
       "buffer": 0,
-      "days_of_cover": 3.0,
+      "days_of_cover": 4.0,
       "inbound": 0
     },
     {
@@ -276,7 +276,7 @@
       "fba": 52,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 52.0,
+      "days_of_cover": 78.0,
       "inbound": 0
     },
     {
@@ -306,7 +306,7 @@
       "fba": 15,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 45.0,
+      "days_of_cover": 60.0,
       "inbound": 0
     },
     {
@@ -346,12 +346,12 @@
       "sku": "T0-3BW2-ZJ6Y",
       "asin": "B0DLV1RSYX",
       "website_product_id": "",
-      "available": 3,
+      "available": 2,
       "in_stock": true,
-      "fba": 1,
+      "fba": 0,
       "wfs": 2,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 8.0,
       "inbound": 0
     },
     {
@@ -376,13 +376,13 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 53,
+      "available": 52,
       "in_stock": true,
-      "fba": 53,
+      "fba": 52,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 79.5,
-      "inbound": 1
+      "days_of_cover": 69.3,
+      "inbound": 0
     },
     {
       "internal_code": "2231US",
@@ -441,7 +441,7 @@
       "fba": 42,
       "wfs": 18,
       "buffer": 0,
-      "days_of_cover": 180.0,
+      "days_of_cover": 240.0,
       "inbound": 0
     },
     {
@@ -471,7 +471,7 @@
       "fba": 14,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 57.0,
+      "days_of_cover": 76.0,
       "inbound": 0
     },
     {
@@ -486,8 +486,8 @@
       "fba": 103,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 309.0,
-      "inbound": 7
+      "days_of_cover": 412.0,
+      "inbound": 0
     },
     {
       "internal_code": "2307US",
@@ -501,8 +501,8 @@
       "fba": 112,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 56.0,
-      "inbound": 8
+      "days_of_cover": 74.7,
+      "inbound": 0
     },
     {
       "internal_code": "2317US",
@@ -532,7 +532,7 @@
       "wfs": 29,
       "buffer": 0,
       "days_of_cover": null,
-      "inbound": 2
+      "inbound": 0
     },
     {
       "internal_code": "2329US",
