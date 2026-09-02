@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-01T10:00:59+00:00",
+  "generated_at": "2026-09-02T09:32:26+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 53,
+      "available": 52,
       "in_stock": true,
-      "fba": 48,
+      "fba": 47,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 79.5,
+      "days_of_cover": 72.8,
       "inbound": 0
     },
     {
@@ -36,7 +36,7 @@
       "fba": 7,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 21.0,
+      "days_of_cover": 24.5,
       "inbound": 0
     },
     {
@@ -111,7 +111,7 @@
       "fba": 32,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 192.0,
+      "days_of_cover": 224.0,
       "inbound": 0
     },
     {
@@ -126,7 +126,7 @@
       "fba": 20,
       "wfs": 11,
       "buffer": 0,
-      "days_of_cover": 93.0,
+      "days_of_cover": 108.5,
       "inbound": 0
     },
     {
@@ -171,7 +171,7 @@
       "fba": 6,
       "wfs": 55,
       "buffer": 0,
-      "days_of_cover": 183.0,
+      "days_of_cover": 213.5,
       "inbound": 0
     },
     {
@@ -231,7 +231,7 @@
       "fba": 17,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 51.0,
+      "days_of_cover": 59.5,
       "inbound": 0
     },
     {
@@ -261,7 +261,7 @@
       "fba": 0,
       "wfs": 1,
       "buffer": 0,
-      "days_of_cover": 6.0,
+      "days_of_cover": 7.0,
       "inbound": 0
     },
     {
@@ -276,7 +276,7 @@
       "fba": 50,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 62.5,
+      "days_of_cover": 75.0,
       "inbound": 0
     },
     {
@@ -306,7 +306,7 @@
       "fba": 16,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 80.0,
+      "days_of_cover": 96.0,
       "inbound": 0
     },
     {
@@ -316,12 +316,12 @@
       "sku": "9J-T8HS-C66T",
       "asin": "B0DLV1PB82",
       "website_product_id": "",
-      "available": 38,
+      "available": 39,
       "in_stock": true,
       "fba": 29,
-      "wfs": 9,
+      "wfs": 10,
       "buffer": 0,
-      "days_of_cover": 228.0,
+      "days_of_cover": 234.0,
       "inbound": 0
     },
     {
@@ -351,7 +351,7 @@
       "fba": 0,
       "wfs": 2,
       "buffer": 0,
-      "days_of_cover": 12.0,
+      "days_of_cover": 14.0,
       "inbound": 0
     },
     {
@@ -381,7 +381,7 @@
       "fba": 47,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 35.2,
+      "days_of_cover": 41.1,
       "inbound": 0
     },
     {
@@ -441,7 +441,7 @@
       "fba": 42,
       "wfs": 18,
       "buffer": 0,
-      "days_of_cover": 360.0,
+      "days_of_cover": 420.0,
       "inbound": 0
     },
     {
@@ -471,7 +471,7 @@
       "fba": 13,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 54.0,
+      "days_of_cover": 63.0,
       "inbound": 0
     },
     {
@@ -486,7 +486,7 @@
       "fba": 102,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 306.0,
+      "days_of_cover": 357.0,
       "inbound": 0
     },
     {
@@ -501,7 +501,7 @@
       "fba": 112,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 112.0,
+      "days_of_cover": 130.7,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 101,
       "wfs": 86,
       "buffer": 0,
-      "days_of_cover": 935.0,
+      "days_of_cover": 1122.0,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 110,
       "wfs": 29,
       "buffer": 0,
-      "days_of_cover": 278.0,
+      "days_of_cover": 347.5,
       "inbound": 0
     },
     {
@@ -546,7 +546,7 @@
       "fba": 144,
       "wfs": 28,
       "buffer": 0,
-      "days_of_cover": 516.0,
+      "days_of_cover": 602.0,
       "inbound": 0
     }
   ]
