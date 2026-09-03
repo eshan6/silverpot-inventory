@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-02T09:32:26+00:00",
+  "generated_at": "2026-09-03T17:10:45+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 52,
+      "available": 50,
       "in_stock": true,
-      "fba": 47,
+      "fba": 45,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 72.8,
+      "days_of_cover": 57.1,
       "inbound": 0
     },
     {
@@ -36,7 +36,7 @@
       "fba": 7,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 24.5,
+      "days_of_cover": 28.0,
       "inbound": 0
     },
     {
@@ -111,7 +111,7 @@
       "fba": 32,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 224.0,
+      "days_of_cover": 256.0,
       "inbound": 0
     },
     {
@@ -126,7 +126,7 @@
       "fba": 20,
       "wfs": 11,
       "buffer": 0,
-      "days_of_cover": 108.5,
+      "days_of_cover": 124.0,
       "inbound": 0
     },
     {
@@ -151,12 +151,12 @@
       "sku": "T1-BJGD-H7P0",
       "asin": "B0DLTHLVB2",
       "website_product_id": "",
-      "available": 1,
-      "in_stock": true,
+      "available": 0,
+      "in_stock": false,
       "fba": 0,
-      "wfs": 1,
+      "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 0.0,
       "inbound": 0
     },
     {
@@ -171,7 +171,7 @@
       "fba": 6,
       "wfs": 55,
       "buffer": 0,
-      "days_of_cover": 213.5,
+      "days_of_cover": 244.0,
       "inbound": 0
     },
     {
@@ -231,7 +231,7 @@
       "fba": 17,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 59.5,
+      "days_of_cover": 68.0,
       "inbound": 0
     },
     {
@@ -261,7 +261,7 @@
       "fba": 0,
       "wfs": 1,
       "buffer": 0,
-      "days_of_cover": 7.0,
+      "days_of_cover": 8.0,
       "inbound": 0
     },
     {
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 50,
+      "available": 49,
       "in_stock": true,
-      "fba": 50,
+      "fba": 49,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 75.0,
+      "days_of_cover": 68.6,
       "inbound": 0
     },
     {
@@ -306,7 +306,7 @@
       "fba": 16,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 96.0,
+      "days_of_cover": 112.0,
       "inbound": 0
     },
     {
@@ -316,12 +316,12 @@
       "sku": "9J-T8HS-C66T",
       "asin": "B0DLV1PB82",
       "website_product_id": "",
-      "available": 39,
+      "available": 37,
       "in_stock": true,
       "fba": 29,
-      "wfs": 10,
+      "wfs": 8,
       "buffer": 0,
-      "days_of_cover": 234.0,
+      "days_of_cover": 86.3,
       "inbound": 0
     },
     {
@@ -346,12 +346,12 @@
       "sku": "T0-3BW2-ZJ6Y",
       "asin": "B0DLV1RSYX",
       "website_product_id": "",
-      "available": 2,
+      "available": 1,
       "in_stock": true,
       "fba": 0,
-      "wfs": 2,
+      "wfs": 1,
       "buffer": 0,
-      "days_of_cover": 14.0,
+      "days_of_cover": 4.0,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 47,
+      "available": 45,
       "in_stock": true,
-      "fba": 47,
+      "fba": 45,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 41.1,
+      "days_of_cover": 36.0,
       "inbound": 0
     },
     {
@@ -441,7 +441,7 @@
       "fba": 42,
       "wfs": 18,
       "buffer": 0,
-      "days_of_cover": 420.0,
+      "days_of_cover": 480.0,
       "inbound": 0
     },
     {
@@ -466,12 +466,12 @@
       "sku": "Y5-C6HY-68LV",
       "asin": "B0DLWTG5XN",
       "website_product_id": "",
-      "available": 18,
+      "available": 17,
       "in_stock": true,
-      "fba": 13,
+      "fba": 12,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 63.0,
+      "days_of_cover": 45.3,
       "inbound": 0
     },
     {
@@ -486,7 +486,7 @@
       "fba": 102,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 357.0,
+      "days_of_cover": 408.0,
       "inbound": 0
     },
     {
@@ -496,12 +496,12 @@
       "sku": "SE-3UPE-IO7M",
       "asin": "",
       "website_product_id": "",
-      "available": 112,
+      "available": 113,
       "in_stock": true,
-      "fba": 112,
+      "fba": 113,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 130.7,
+      "days_of_cover": 131.8,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 101,
       "wfs": 86,
       "buffer": 0,
-      "days_of_cover": 1122.0,
+      "days_of_cover": 1309.0,
       "inbound": 0
     },
     {
@@ -526,12 +526,12 @@
       "sku": "M6-VQP9-KZDY",
       "asin": "",
       "website_product_id": "",
-      "available": 139,
+      "available": 138,
       "in_stock": true,
-      "fba": 110,
+      "fba": 109,
       "wfs": 29,
       "buffer": 0,
-      "days_of_cover": 347.5,
+      "days_of_cover": 276.0,
       "inbound": 0
     },
     {
@@ -546,7 +546,7 @@
       "fba": 144,
       "wfs": 28,
       "buffer": 0,
-      "days_of_cover": 602.0,
+      "days_of_cover": 688.0,
       "inbound": 0
     }
   ]
