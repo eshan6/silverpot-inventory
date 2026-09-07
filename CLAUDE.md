@@ -50,6 +50,16 @@ from a round number. Do not reintroduce a blanket default without that data.
 - `snapshots` is append-only. Never overwrite it. The time series is what makes
   days-of-cover possible, and days-of-cover is the reorder trigger that matters
   once FCL ocean freight puts 60-90 days between decision and stock landing.
+- **Sinks are written in this order: feed, website, Google Sheets.** Do not
+  reorder them. The storefront reads Supabase and never touches the
+  spreadsheet, so Sheets going down must not hold up the numbers a customer
+  sees. On 2026-09-03 a Sheets `503` aborted the run inside `open_sheet()`
+  before anything was written, and the site carried the previous day's figures
+  for 31 hours even though Amazon and Walmart had both answered correctly.
+  Reading history and writing it are now both wrapped: a failure costs
+  days-of-cover for that run and one row in `snapshots`, and fails the run at
+  the end via `run_exit`, but never the day's availability. That failure is a
+  notification, not a data guard - same posture as the unmapped-SKU exit.
 - The workflow's second daily slot (13:43 UTC) **skips itself** when the feed on
   main already carries today's date. It is a safety net for a missed morning
   run, not a second sync. Dropping that guard would append a second set of
