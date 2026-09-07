@@ -223,6 +223,12 @@ decision and the stock landing in Fords.
 `current` is a derived one-row-per-SKU view, safe to overwrite, convenient for
 eyeballing and for VLOOKUPs from other sheets.
 
+Neither tab is read by the storefront. The website's stock comes from Supabase,
+written directly by `collector/website.py`; Google Sheets is for you to look at
+and for days-of-cover. That is why the run writes the feed and the website
+first and Sheets last — a Sheets outage costs one row of history, not a day of
+stale availability on the site. It still fails the run so you hear about it.
+
 ## Warnings the collector emits
 
 | Message | Meaning |

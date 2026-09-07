@@ -115,6 +115,36 @@ def unmapped_stock_exit(unclaimed_with_stock: list[tuple[str, int, str]]) -> int
     return 1
 
 
+def sheets_failure_exit(sheets_error: Exception | None) -> int:
+    """Non-zero when the history sink could not be written.
+
+    Same posture as unmapped_stock_exit: a notification, not a data guard. The
+    feed and the website are written before Sheets is touched, so this failure
+    never means a customer saw a wrong number - only that this day is missing
+    from `snapshots`, and days-of-cover is one point short until it fills in.
+    """
+    if sheets_error is None:
+        return 0
+    print(
+        f"FAILED: Google Sheets could not be written, so today's history row is "
+        f"missing: {net.describe_error(sheets_error)}. The feed and the website "
+        f"were written first and are current - only the snapshots series has a "
+        f"gap for today. A transient outage needs no action; the next run "
+        f"resumes appending. A persistent one means checking "
+        f"GOOGLE_SERVICE_ACCOUNT_JSON and GOOGLE_SHEET_ID.",
+        file=sys.stderr,
+    )
+    return 1
+
+
+def run_exit(unclaimed_with_stock: list[tuple[str, int, str]],
+             sheets_error: Exception | None) -> int:
+    """The run's exit code. Both conditions report; either alone fails the run."""
+    unmapped = unmapped_stock_exit(unclaimed_with_stock)
+    history = sheets_failure_exit(sheets_error)
+    return 1 if (unmapped or history) else 0
+
+
 def snapshot_rows(date: str, results: list[dict]) -> list[list]:
     rows = []
     for r in results:
@@ -322,12 +352,23 @@ def main() -> int:
         print(f"WARN present on one marketplace only: {', '.join(half_matched)}",
               file=sys.stderr)
 
-    history = {}
+    # Reading prior history is best effort. Google Sheets is the history sink;
+    # it is not what the storefront reads, so an outage there must not stop
+    # today's numbers reaching customers - see the write order further down.
+    # Losing it costs days-of-cover for this run and nothing else.
+    history: dict = {}
     sh = None
+    sheets_error: Exception | None = None
     if not args.dry_run:
         from . import sheets
-        sh = sheets.open_sheet()
-        history = sheets.read_prior_published(sh)
+        try:
+            sh = sheets.open_sheet()
+            history = sheets.read_prior_published(sh)
+        except Exception as exc:
+            sheets_error = exc
+            print(f"WARN Google Sheets unreachable, so days-of-cover cannot be "
+                  f"computed this run: {net.describe_error(exc)}",
+                  file=sys.stderr)
 
     for r in results:
         series = history.get(r["internal_code"], []) + [(today, r["published_available"])]
@@ -351,7 +392,7 @@ def main() -> int:
 
     if args.dry_run:
         print(json.dumps(results, indent=2))
-        return unmapped_stock_exit(unclaimed_with_stock)
+        return run_exit(unclaimed_with_stock, sheets_error)
 
     from . import sheets
     expected = {"internal_code", "product_name", "sku", "walmart_sku", "asin",
@@ -363,15 +404,18 @@ def main() -> int:
         if gap:
             raise KeyError(f"result rows are missing expected keys: {sorted(gap)}")
 
-    sheets.append_snapshots(sh, snapshot_rows(today, results))
-    sheets.write_current(sh, [[
-        r["internal_code"], r["product_name"], r["sku"], r["walmart_sku"],
-        r["asin"], r["fba_fulfillable"], r["wfs_available"], r["raw_available"],
-        r["safety_buffer"], r["published_available"], r["fba_inbound"], r["fba_reserved"],
-        r["fba_unfulfillable"], r["daily_depletion"] or "", r["days_of_cover"] or "",
-        datetime.now(timezone.utc).isoformat(timespec="seconds"),
-    ] for r in results])
-
+    # Write order is deliberate: feed, then website, then Google Sheets.
+    #
+    # On 2026-09-03 a Google Sheets 503 aborted the run at open_sheet(), before
+    # anything was written. Amazon and Walmart had both answered correctly and
+    # the numbers were sitting in memory, but the site kept the previous day's
+    # figures for 31 hours. The storefront reads Supabase and never touches the
+    # spreadsheet, so it was queuing behind a service it does not depend on.
+    #
+    # Customers see the website; nobody sees a missing spreadsheet row until
+    # they go looking. So the things a customer reads are written first, and
+    # the history sink goes last where its failure costs one row in a series
+    # rather than a day of stale availability.
     PUBLIC_DIR.mkdir(exist_ok=True)
     feed = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -424,7 +468,27 @@ def main() -> int:
         print(f"Website push skipped (not configured yet: "
               f"{', '.join(website.missing())})")
 
-    return unmapped_stock_exit(unclaimed_with_stock)
+    # History last, and tolerantly. If the read at the top already failed there
+    # is no open handle to write through, and either way the run is reported as
+    # failed at the end - a missing history row is worth an inbox, just not
+    # worth withholding the day's availability for.
+    if sh is not None:
+        try:
+            sheets.append_snapshots(sh, snapshot_rows(today, results))
+            sheets.write_current(sh, [[
+                r["internal_code"], r["product_name"], r["sku"], r["walmart_sku"],
+                r["asin"], r["fba_fulfillable"], r["wfs_available"], r["raw_available"],
+                r["safety_buffer"], r["published_available"], r["fba_inbound"],
+                r["fba_reserved"], r["fba_unfulfillable"],
+                r["daily_depletion"] or "", r["days_of_cover"] or "",
+                datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            ] for r in results])
+        except Exception as exc:
+            sheets_error = exc
+            print(f"WARN Google Sheets write failed: {net.describe_error(exc)}",
+                  file=sys.stderr)
+
+    return run_exit(unclaimed_with_stock, sheets_error)
 
 
 if __name__ == "__main__":
