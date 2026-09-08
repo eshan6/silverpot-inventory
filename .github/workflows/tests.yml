@@ -29,3 +29,45 @@ jobs:
       - run: pip install -r requirements.txt
 
       - run: python -m unittest discover -s tests -v
+
+  # The authorisation rules are the one part of this repository where being
+  # wrong is not a wrong number on a page but someone reading data they should
+  # not. They were provable on a laptop and nowhere else, which meant they were
+  # only ever proved when someone remembered to.
+  policies:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+        ports: ["5432:5432"]
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - run: dashboard/supabase/tests/run.sh
+
+  # tsc under strict with noUncheckedIndexedAccess is the only thing standing
+  # between a renamed column and a page that renders undefined at a customer's
+  # spend figure.
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: dashboard/web/package-lock.json
+      - run: npm ci
+      - run: npm run build

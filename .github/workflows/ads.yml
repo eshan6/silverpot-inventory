@@ -1,0 +1,83 @@
+name: Ads sync
+
+# Pulls Amazon Advertising figures into the dashboard database.
+#
+# A third workflow rather than a step inside dashboard.yml, because the two
+# have different failure modes and different credentials. Advertising is a
+# separate registration from SP-API with its own approval, so it can be denied
+# while Orders keeps working perfectly - and a denied Ads call must not stop
+# sales from being collected that morning.
+#
+# 06:37 UTC sits between the sales pull (06:07) and the safety-net slot, on an
+# odd minute for the reason CLAUDE.md gives: GitHub delays scheduled workflows
+# worst at the times everyone else picks.
+#
+# The window is 15 days, not 3. Attribution keeps restating recent figures - a
+# click today can be credited with a sale for up to 14 days - so yesterday's
+# spend-per-unit is not final until the window closes behind it. Rows are
+# upserted, so re-reading a day corrects it rather than duplicating it.
+
+on:
+  schedule:
+    - cron: "37 6 * * *"
+    - cron: "07 15 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days back to re-read, ending yesterday (default 15)"
+        type: string
+        default: ""
+      probe:
+        description: "Print Amazon's raw report rows, write nothing"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Fetch and normalize, print, write nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ads-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Pull advertising into the dashboard
+        env:
+          # Advertising credentials are their own set. They are not the SP-API
+          # ones under a different name: different registration, different
+          # authorisation server audience, and a profile id that has no SP-API
+          # equivalent.
+          ADS_CLIENT_ID: ${{ secrets.ADS_CLIENT_ID }}
+          ADS_CLIENT_SECRET: ${{ secrets.ADS_CLIENT_SECRET }}
+          ADS_REFRESH_TOKEN: ${{ secrets.ADS_REFRESH_TOKEN }}
+          ADS_PROFILE_ID: ${{ secrets.ADS_PROFILE_ID }}
+          FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
+          DASHBOARD_SUPABASE_URL: ${{ secrets.DASHBOARD_SUPABASE_URL }}
+          DASHBOARD_SUPABASE_SERVICE_KEY: ${{ secrets.DASHBOARD_SUPABASE_SERVICE_KEY }}
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.days }}" ]; then
+            ARGS="$ARGS --days ${{ inputs.days }}"
+          fi
+          if [ "${{ inputs.probe }}" = "true" ]; then
+            ARGS="$ARGS --probe"
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python -m collector.ads_sync $ARGS

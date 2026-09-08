@@ -1,36 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Freshness } from "../components/Freshness";
-import { addDays, int, money, shortDay, todayET } from "../lib/format";
+import { RangeControls } from "../components/RangeControls";
+import { SavedViews } from "../components/SavedViews";
+import { int, money, shortDay } from "../lib/format";
+import { rangeFor } from "../lib/range";
+import type { Preset, Range } from "../lib/range";
 import type { Marketplace, SalesRow } from "../lib/types";
 
-type Preset = "7d" | "30d" | "mtd" | "custom";
-
-const PRESETS: { key: Preset; label: string }[] = [
-  { key: "7d", label: "7 days" },
-  { key: "30d", label: "30 days" },
-  { key: "mtd", label: "Month" },
-  { key: "custom", label: "Custom" },
-];
-
-/** Ranges end yesterday: today is a partial Eastern day and would read as a slump. */
-function rangeFor(preset: Preset): { from: string; to: string } {
-  const to = addDays(todayET(), -1);
-  if (preset === "7d") return { from: addDays(to, -6), to };
-  if (preset === "30d") return { from: addDays(to, -29), to };
-  const first = `${to.slice(0, 7)}-01`;
-  return { from: first, to };
-}
+type ViewConfig = {
+  preset: Preset;
+  from: string;
+  to: string;
+};
 
 export default function Sales({ marketplace }: { marketplace: Marketplace }) {
   const [preset, setPreset] = useState<Preset>("30d");
-  const [range, setRange] = useState(() => rangeFor("30d"));
+  const [range, setRange] = useState<Range>(() => rangeFor("30d"));
   const [rows, setRows] = useState<SalesRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const choose = (p: Preset) => {
-    setPreset(p);
-    if (p !== "custom") setRange(rangeFor(p));
+  const apply = (c: Partial<ViewConfig>) => {
+    if (c.preset && c.preset !== "custom") {
+      setPreset(c.preset);
+      setRange(rangeFor(c.preset));
+    } else if (c.from && c.to) {
+      setPreset("custom");
+      setRange({ from: c.from, to: c.to });
+    }
   };
 
   useEffect(() => {
@@ -95,28 +92,20 @@ export default function Sales({ marketplace }: { marketplace: Marketplace }) {
 
   return (
     <>
-      <Freshness marketplace={marketplace} />
+      <Freshness marketplace={marketplace} sources={["sp-api-orders"]} />
 
-      <div className="controls">
-        <div className="presets">
-          {PRESETS.map((p) => (
-            <button key={p.key} className={preset === p.key ? "on" : ""}
-                    onClick={() => choose(p.key)}>
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <div className="field">
-          <label htmlFor="from">From</label>
-          <input id="from" type="date" value={range.from}
-                 onChange={(e) => { setPreset("custom"); setRange({ ...range, from: e.target.value }); }} />
-        </div>
-        <div className="field">
-          <label htmlFor="to">To</label>
-          <input id="to" type="date" value={range.to}
-                 onChange={(e) => { setPreset("custom"); setRange({ ...range, to: e.target.value }); }} />
-        </div>
-      </div>
+      <RangeControls
+        preset={preset}
+        range={range}
+        onChange={(p, r) => { setPreset(p); setRange(r); }}
+      />
+
+      <SavedViews<ViewConfig>
+        section="sales"
+        marketplace={marketplace}
+        current={{ preset, from: range.from, to: range.to }}
+        onApply={apply}
+      />
 
       {err && <div className="banner bad">Could not load sales: {err}</div>}
 
@@ -186,11 +175,7 @@ export default function Sales({ marketplace }: { marketplace: Marketplace }) {
             </tbody>
           </table>
 
-          <h2 style={{ fontSize: "0.62rem", textTransform: "uppercase",
-                       letterSpacing: "0.09em", color: "var(--dim)",
-                       margin: "2rem 0 0.6rem" }}>
-            Units per day
-          </h2>
+          <h2 className="section-head">Units per day</h2>
           <table>
             <tbody>
               {byDay.map(([day, units]) => (

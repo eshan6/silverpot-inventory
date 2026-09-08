@@ -1,0 +1,7 @@
+# Netlify and Cloudflare Pages read this file; Vercel reads vercel.json.
+# Both say the same thing, so the host stays a reversible decision.
+#
+# The app is a single page with client-side routes. Without this, opening
+# /spend directly - or refreshing on it - asks the host for a file that does
+# not exist and gets a 404 for an app that works perfectly.
+/*    /index.html   200

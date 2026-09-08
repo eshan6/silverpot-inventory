@@ -128,10 +128,63 @@ td.name { font-weight: 500; }
 td.name small { display: block; font-family: var(--mono); font-size: 0.62rem; color: var(--dim); font-weight: 400; }
 tbody tr:hover { background: rgba(31, 78, 121, 0.035); }
 
+td.left { text-align: left; }
+td.mono { font-family: var(--mono); font-size: 0.68rem; color: var(--dim); }
+/* A number past its target is coloured, never hidden or rounded away. */
+td.num.over { color: var(--alert); }
+
 .bar { display: flex; height: 15px; background: var(--wash); width: 100%; min-width: 120px; }
 .bar span { display: block; }
 .seg-a { background: var(--navy); }
 .seg-b { background: var(--teal); }
+.seg-over { background: var(--alert); }
+
+/* --------------------------------------------------------------- sections */
+
+.section-head {
+  font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--dim); margin: 2rem 0 0.6rem; display: flex; gap: 0.75rem;
+  align-items: center;
+}
+.head-extra {
+  display: flex; gap: 0.35rem; align-items: center; text-transform: none;
+  letter-spacing: 0;
+}
+.head-extra select { font-size: 0.66rem; padding: 0.1rem 0.25rem; }
+
+.footnote {
+  font-family: var(--mono); font-size: 0.64rem; color: var(--dim);
+  line-height: 1.6; margin-top: 0.7rem; max-width: 46rem;
+}
+
+/* ----------------------------------------------------------- saved views */
+
+.views {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  margin: -0.4rem 0 1.5rem; font-size: 0.68rem;
+}
+.views-label {
+  font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--dim);
+}
+.views-none { font-family: var(--mono); font-size: 0.64rem; color: var(--dim); }
+.views-err { font-family: var(--mono); font-size: 0.64rem; color: var(--alert); }
+.chip { display: inline-flex; border: 1px solid var(--rule); }
+.chip button {
+  background: none; border: 0; cursor: pointer; font: inherit;
+  color: var(--navy); padding: 0.15rem 0.45rem;
+}
+.chip button.x { color: var(--dim); border-left: 1px solid var(--rule); }
+.chip button.x:hover { color: var(--alert); }
+.views-save { display: flex; align-items: center; gap: 0.4rem; margin-left: auto; }
+.views-save input[type="text"], .views-save input:not([type]) {
+  font: inherit; padding: 0.2rem 0.4rem; border: 1px solid var(--rule);
+  background: #fff; min-width: 12rem;
+}
+.views-save label {
+  display: flex; align-items: center; gap: 0.2rem; color: var(--dim);
+}
+.views-save .btn { padding: 0.2rem 0.5rem; }
 
 /* ---------------------------------------------------------------- states */
 
@@ -154,3 +207,7 @@ tbody tr:hover { background: rgba(31, 78, 121, 0.035); }
   margin-bottom: 0.9rem; line-height: 1.4;
 }
 .login .note { font-family: var(--mono); font-size: 0.64rem; color: var(--dim); margin-top: 1rem; line-height: 1.5; }
+.linkish {
+  background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
+  color: var(--navy); text-decoration: underline;
+}

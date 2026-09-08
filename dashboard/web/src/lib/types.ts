@@ -20,6 +20,70 @@ export interface SalesRow {
   revenue: number;
 }
 
+export type AdProgram = "sponsored_products" | "sponsored_brands" | "sponsored_display";
+
+export const AD_PROGRAMS: { key: AdProgram; label: string }[] = [
+  { key: "sponsored_products", label: "Sponsored Products" },
+  { key: "sponsored_brands", label: "Sponsored Brands" },
+  { key: "sponsored_display", label: "Sponsored Display" },
+];
+
+export interface AdsRow {
+  ad_date: string;
+  ad_program: AdProgram;
+  campaign_id: string;
+  campaign_name: string | null;
+  ad_group: string;
+  sku: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  attributed_sales: number;
+  attributed_units: number;
+}
+
+export interface SearchTermRow {
+  ad_date: string;
+  ad_program: AdProgram;
+  campaign_id: string;
+  search_term: string;
+  match_type: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  attributed_sales: number;
+  attributed_units: number;
+}
+
+/** From the spend_daily view: spend over units actually sold, not attributed. */
+export interface SpendRow {
+  day: string;
+  ad_spend: number;
+  units_sold: number;
+  revenue: number;
+  attributed_sales: number;
+  attributed_units: number;
+  cost_per_unit: number | null;
+  ad_pct_of_revenue: number | null;
+}
+
+export interface Invite {
+  email: string;
+  role: Role;
+  created_at: string;
+  claimed_at: string | null;
+}
+
+export interface AuditEntry {
+  id: number;
+  actor_email: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface IngestRun {
   source: string;
   status: "running" | "ok" | "failed";
