@@ -22,7 +22,9 @@ psql -q -tAc "create database $DB" postgres
 # The auth schema and the anon/authenticated/service_role roles are Supabase's;
 # locally we stand them up ourselves so the same policies can be exercised.
 psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$HERE/00_local_auth_stub.sql"
-psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$HERE/../migrations/0001_init.sql"
+for m in "$HERE"/../migrations/*.sql; do
+    psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$m"
+done
 
 psql -q -v ON_ERROR_STOP=1 -d "$DB" -c "create schema tests"
 # The assertion helpers are called while acting as authenticated/service_role,

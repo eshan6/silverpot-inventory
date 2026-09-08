@@ -10,8 +10,10 @@ Amazon only for now. Walmart is plumbed for in the schema but not ingested.
 | Piece | State |
 |---|---|
 | Schema, roles, RLS, audit log | **built and tested** (34 checks against real Postgres) |
-| Sales ingestion (SP-API Orders) | not started |
-| Ads ingestion (Google Sheets export) | not started |
+| Ad programs (SP + SB + SD) and the Spend view | **built** |
+| Sales: fetch, Eastern-day bucketing, aggregation | **built and tested** (26 checks) |
+| Sales: writing into Supabase + scheduled workflow | not started |
+| Ads ingestion (Advertising API) | blocked on Amazon approval |
 | Frontend (auth, three sections, saved views) | not started |
 | Admin UI (users, settings) | not started |
 
