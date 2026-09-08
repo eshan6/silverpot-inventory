@@ -79,21 +79,49 @@ way to force a run.
 
 ## Architecture
 
+Two pipelines share this repository and share Amazon credentials, but nothing
+else. Inventory publishes stock to the storefront; the dashboard collects
+sales and advertising for an internal reporting app. A bad morning for one
+must never take the other down, which is why they are separate modules,
+separate workflows and separate Supabase projects.
+
 ```
 collector/
-  config.py    SKU map loader, dataclasses, constants
-  net.py       shared HTTP session: retries, IPv4 forcing, error descriptions
-  amazon.py    SP-API FBA inventory (API + Reports fallback) + diagnose()
-  walmart.py   Walmart WFS inventory
-  sheets.py    Google Sheets sink (snapshots + current tabs)
-  website.py   Supabase writer (not yet configured)
-  main.py      orchestrator
+  config.py         SKU map loader, dataclasses, constants
+  net.py            shared HTTP session: retries, IPv4 forcing, error descriptions
+  amazon.py         SP-API FBA inventory (API + Reports fallback) + diagnose()
+  walmart.py        Walmart WFS inventory
+  sheets.py         Google Sheets sink (snapshots + current tabs)
+  website.py        Supabase writer for the storefront (not yet configured)
+  main.py           inventory orchestrator
+  --- the dashboard, below: different job, different database ---
+  orders.py         SP-API Orders -> units sold, bucketed by America/New_York
+  ads.py            Amazon Ads Reports v3: SP, SB and SD; async request/poll/download
+  ads_auth.py       one-off OAuth helper for the Ads refresh token and profile id
+  dashboard_db.py   the dashboard's Supabase project: upserts and the run ledger
+  dashboard_sync.py daily sales ingestion
+  ads_sync.py       daily advertising ingestion (15-day window: attribution moves)
 sku_map.csv    the identity layer - 36 rows, hand-maintained
-public/        static dashboard + inventory.json feed
+public/        static storefront dashboard + inventory.json feed
+dashboard/     the internal Sales/Ads/Spend app: Postgres schema + React SPA
 tests/         payload-shape tests; no credentials, no network
 .github/workflows/inventory.yml   daily cron 05:13 UTC + 13:43 safety net
-.github/workflows/tests.yml       unit tests on every push
+.github/workflows/dashboard.yml   sales into the dashboard: 06:07 + 14:37
+.github/workflows/ads.yml         advertising into the dashboard: 06:37 + 15:07
+.github/workflows/tests.yml       unit tests, RLS policy tests, frontend build
 ```
+
+The dashboard has its own `dashboard/README.md`, and its authorisation rules
+are proved against a real Postgres by `dashboard/supabase/tests/run.sh`. Two
+things there are worth knowing before changing anything:
+
+- **Its Supabase project is not the storefront's.** `DASHBOARD_SUPABASE_URL`
+  and `DASHBOARD_SUPABASE_SERVICE_KEY` are deliberately separate names from
+  `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`. Pointing one at the other would
+  put internal sales figures in a database the storefront reads.
+- **Authorisation is row-level security, not React.** A viewer with devtools
+  has a valid session token and can call the REST API directly, so hiding a
+  control in the UI is a courtesy and never a control.
 
 `internal_code` (`2201US`, `2301US`) is the join key for the whole system and
 matches Eshan's existing Flask sales tracker. The `sku` column is the primary
@@ -200,6 +228,21 @@ python -m collector.main              # full run
 
 python -m unittest discover -s tests  # no credentials or network needed
 ```
+
+The dashboard's own jobs, same pattern:
+
+```bash
+python -m collector.dashboard_sync --dry-run   # sales: compute and print
+python -m collector.ads_sync --probe           # ads: dump Amazon's raw report rows
+python -m collector.ads_sync --dry-run
+
+dashboard/supabase/tests/run.sh                # RLS + invites + setup.sql, needs Postgres 16
+cd dashboard/web && npm run build              # tsc under strict, then vite
+```
+
+`--probe` before trusting any advertising figure. Amazon says `cost` in some
+reports and `spend` in others, and this repository has already lost time to
+nine wrong guesses at a Walmart field name.
 
 Credentials come from environment variables. Locally, put them in `.env`
 (already gitignored) and source it. In CI they are GitHub Actions secrets.
