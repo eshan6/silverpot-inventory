@@ -9,13 +9,16 @@ Amazon only for now. Walmart is plumbed for in the schema but not ingested.
 
 | Piece | State |
 |---|---|
-| Schema, roles, RLS, audit log | **built and tested** (34 checks against real Postgres) |
+| Schema, roles, RLS, audit log | **built and tested** (against real Postgres) |
 | Ad programs (SP + SB + SD) and the Spend view | **built** |
-| Sales: fetch, Eastern-day bucketing, aggregation | **built and tested** (26 checks) |
-| Sales: writing into Supabase + scheduled workflow | not started |
-| Ads ingestion (Advertising API) | blocked on Amazon approval |
-| Frontend (auth, three sections, saved views) | not started |
-| Admin UI (users, settings) | not started |
+| Sales: fetch, Eastern-day bucketing, aggregation | **built and tested** |
+| Sales: writing into Supabase + scheduled workflow | **built** |
+| Invites + first super admin, without a server | **built and tested** |
+| Ads ingestion (Advertising API, all three programs) | **built**, waiting on the API approval |
+| Frontend: Sales, Ads, Spend, saved views | **built** |
+| Admin UI (people, invites, audit log) | **built** |
+| One-paste Supabase setup | **built and tested** |
+| Walmart ingestion | postponed on purpose (see the end) |
 
 ## The shape of it
 
@@ -85,6 +88,77 @@ trigger.
 The audit log is written by triggers too, so a change made through any route
 gets recorded, not just changes the app remembered to log.
 
+## Setting it up
+
+Five steps, none of them repeated. Everything after this runs on a schedule.
+
+**1. Create a Supabase project.** Free tier. Note the project URL, the `anon`
+key and the `service_role` key from Settings → API. The anon key is meant to be
+public; the service key is not and must never leave GitHub Actions secrets.
+
+**2. Paste the schema.** Open `dashboard/supabase/setup.sql`, put your own
+email on the one marked line near the end, and run the whole file in the
+Supabase SQL editor. That is every migration in order plus the bootstrap
+address, and it refuses to run while the example address is still in it.
+
+**3. Sign up.** Deploy the app (step 4) or run it locally, click *Create your
+account*, and use the address from step 2. You are provisioned as super admin
+automatically — there is no follow-up SQL. That claim works only once: after an
+active super admin exists the bootstrap does nothing.
+
+If Supabase's email confirmation is on (Authentication → Providers → Email,
+"Confirm email"), you get a confirmation link first. Either setting works; the
+profile is created at signup either way.
+
+**4. Deploy the frontend.** Vercel: import the repository, set the root
+directory to `dashboard/web`, and add `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_ANON_KEY`. `vercel.json` already carries the build command, the
+SPA rewrite and the security headers. Netlify and Cloudflare Pages read
+`public/_redirects` and `public/_headers` and need the same two variables — the
+app has no server of its own, so moving hosts is a ten-minute decision, not an
+architectural one.
+
+**5. Add the GitHub Actions secrets** so ingestion can write:
+
+| Secret | Used by |
+|---|---|
+| `DASHBOARD_SUPABASE_URL` | both sync workflows |
+| `DASHBOARD_SUPABASE_SERVICE_KEY` | both sync workflows |
+| `ADS_CLIENT_ID` `ADS_CLIENT_SECRET` `ADS_REFRESH_TOKEN` `ADS_PROFILE_ID` | Ads sync |
+
+Amazon's SP-API credentials are already secrets in this repository and are
+reused as they are.
+
+The four `ADS_*` values come from `python -m collector.ads_auth`, once the
+Advertising API application is approved:
+
+```bash
+python -m collector.ads_auth url                 # open it, approve, copy the code
+python -m collector.ads_auth token --code THE_CODE
+python -m collector.ads_auth profiles            # the profile id for the US seller account
+```
+
+That is the one command in this repository that prints a secret on purpose. It
+says so when it runs. Paste the refresh token into GitHub Secrets and nowhere
+else.
+
+**Then check it works** without waiting for a schedule: run the *Dashboard
+sync* and *Ads sync* workflows by hand from the Actions tab. Ads accepts a
+`probe` tick that prints Amazon's raw rows and writes nothing, which is the
+right first run — it confirms the column names against reality rather than
+assuming them.
+
+## Adding people
+
+An admin records an invite (Admin → Invite someone); the invited person signs
+up with that address and is provisioned with the role recorded for them. Send
+them the link yourself — recording an invite does not send an email.
+
+There is no server in this design and the service key must never reach a
+browser, so an admin cannot mint an account directly. This is the way round
+that, and it keeps invite-only true: someone who signs up without an invite
+gets an account with no profile, which every policy treats as no access.
+
 ## Running the tests
 
 Needs a Postgres 16 and nothing else. No Supabase account, no network, no
@@ -94,11 +168,20 @@ credentials.
 dashboard/supabase/tests/run.sh
 ```
 
-It creates a throwaway database, stands up a local stand-in for Supabase's
-`auth` schema and roles, applies the migration, and then tries every escalation
-a real session could attempt: a viewer promoting themselves, an admin minting
-an admin, an admin deactivating a super admin, a deactivated user reading
-facts, a stranger's token reading facts.
+Each test file gets its own throwaway database — they used to share one, which
+made them order-dependent and made the "no super admin exists yet" bootstrap
+check meaningless once another file had created one. The harness stands up a
+local stand-in for Supabase's `auth` schema and roles, applies the migrations,
+and then tries every escalation a real session could attempt: a viewer
+promoting themselves, an admin minting an admin, an admin inviting an admin, an
+admin deactivating a super admin, a deactivated user reading facts, a
+stranger's token reading facts.
+
+It finishes by running `setup.sql` itself, twice: once unedited, to prove it
+refuses while the example address is still in it, and once with an address
+filled in, to prove that signing up as that address really does produce a super
+admin. A generated file nobody executes before the one time it matters is a
+file nobody has tested.
 
 The suite is mutation-tested. Deleting the "admins may only invite viewers"
 guard or the last-super-admin guard each make it fail.
@@ -128,10 +211,8 @@ API, is a separate and harder approval, so it is postponed rather than
 promised. Combined Amazon+Walmart views are meant to be impossible, and keeping
 `marketplace` on every row and every query is how that stays true.
 
-**Amazon Advertising API.** Impressions, clicks, CPC, spend and search terms
-come from the Advertising API, which is *not* SP-API: separate registration,
-separate approval, separate OAuth client, and async report polling. v1 reads a
-Google Sheet you export into instead, which needs no approval. Swapping the
-source later touches the ingestion job only, because `ads_daily` and
-`ads_search_terms` are shaped around the data rather than around where it came
-from.
+**Nothing else.** Advertising is now read straight from the Amazon Ads API
+rather than from an exported Google Sheet, which was the earlier plan and the
+one thing in this design that would have meant uploading a file every week.
+`collector/ads.py` covers Sponsored Products, Brands and Display; only
+Sponsored Products runs today, and the other two cost nothing to carry.

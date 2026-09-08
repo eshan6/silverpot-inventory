@@ -51,3 +51,50 @@ GRANTS
 
     psql -v ON_ERROR_STOP=1 -d "$db" -f "$test_file"
 done
+
+# ------------------------------------------------------- the paste-once file
+#
+# setup.sql is what actually gets run against the real project, once, by hand.
+# Proving the migrations apply is not the same as proving that file applies:
+# it adds a bootstrap block of its own, and a generated file that nobody
+# executes before the one time it matters is a file nobody has tested.
+
+echo ''
+echo 'setup.sql: the single paste'
+
+# Unedited, it must refuse: shipping with a live example address would hand
+# the super admin slot to whoever signs up as it first. A separate database,
+# because the refusal happens after the tables are created and re-running the
+# file over them would fail for the uninteresting reason instead.
+psql -q -tAc "drop database if exists silverpot_test_setup_raw" postgres
+psql -q -tAc "create database silverpot_test_setup_raw" postgres
+psql -q -v ON_ERROR_STOP=1 -d silverpot_test_setup_raw -f "$HERE/00_local_auth_stub.sql"
+
+if psql -q -v ON_ERROR_STOP=1 -d silverpot_test_setup_raw \
+        -f "$HERE/../setup.sql" 2>"$HERE/.setup_err"; then
+    echo 'FAILED: setup.sql ran with the placeholder email still in it'
+    exit 1
+fi
+if ! grep -q 'marked line' "$HERE/.setup_err"; then
+    echo 'FAILED: setup.sql failed, but not on the bootstrap guard:'
+    cat "$HERE/.setup_err"
+    exit 1
+fi
+rm -f "$HERE/.setup_err"
+echo '  ok: setup.sql refuses to run until the bootstrap email is set'
+
+db=silverpot_test_setup
+psql -q -tAc "drop database if exists $db" postgres
+psql -q -tAc "create database $db" postgres
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$HERE/00_local_auth_stub.sql"
+
+sed 's/you@example\.com/eshan@dcgnorthamerica.com/g' "$HERE/../setup.sql" \
+    > "$HERE/.setup_edited.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$HERE/.setup_edited.sql"
+rm -f "$HERE/.setup_edited.sql"
+
+psql -q -v ON_ERROR_STOP=1 -d "$db" -c "create schema tests"
+psql -q -v ON_ERROR_STOP=1 -d "$db" \
+    -c "grant usage on schema tests to anon, authenticated, service_role"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$HERE/_helpers.sql"
+psql -v ON_ERROR_STOP=1 -d "$db" -f "$HERE/setup_check.sql"

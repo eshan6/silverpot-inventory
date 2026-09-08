@@ -1,0 +1,11 @@
+# Netlify and Cloudflare Pages read this file; Vercel reads vercel.json.
+#
+# Nothing here is load-bearing for authorisation - that is row level security
+# in Postgres. These reduce the damage a hostile page can do with a session
+# that is already signed in.
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
