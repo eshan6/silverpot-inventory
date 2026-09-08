@@ -10,31 +10,6 @@
 
 \set ON_ERROR_STOP on
 
--- ------------------------------------------------------------------ helpers
-
-create or replace function tests.act_as(p_id uuid)
-returns void language plpgsql as $$
-begin
-    perform set_config('request.jwt.claim.sub', p_id::text, false);
-    execute 'set role authenticated';
-end $$;
-
-create or replace function tests.act_as_service()
-returns void language plpgsql as $$
-begin
-    perform set_config('request.jwt.claim.sub', '', false);
-    execute 'set role service_role';
-end $$;
-
-create or replace function tests.ok(cond boolean, what text)
-returns void language plpgsql as $$
-begin
-    if not cond then
-        raise exception 'FAILED: %', what;
-    end if;
-    raise notice '  ok: %', what;
-end $$;
-
 -- ------------------------------------------------------------------ fixtures
 
 reset role;
@@ -69,10 +44,6 @@ values ('amazon', '2026-09-01', 'AA-1111-AAAA', '2201US', 12, 167.88),
 
 insert into public.app_settings (key, value) values ('ads_sheet_id', '"abc123"'::jsonb);
 
-grant select, insert, update on all tables in schema public to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
-grant all on all tables in schema public to service_role;
-grant usage, select on all sequences in schema public to service_role;
 
 -- ================================================================ VIEWER
 
