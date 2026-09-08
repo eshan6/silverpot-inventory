@@ -1,0 +1,70 @@
+name: Dashboard sync
+
+# Pulls sales into the dashboard database. Separate workflow from the
+# inventory sync on purpose: the storefront's stock numbers must not start
+# failing because a dashboard is misconfigured, and the dashboard must not be
+# skipped because inventory had a bad morning.
+#
+# Odd minutes, and two slots, for the same reason inventory.yml uses them:
+# GitHub delays scheduled workflows worst at the times everyone else picks,
+# and one delayed slot is a stale dashboard. See CLAUDE.md.
+#
+# 06:07 UTC is after inventory's 05:13, so a morning where both run leaves the
+# Amazon API un-hammered by two jobs at once.
+
+on:
+  schedule:
+    - cron: "07 6 * * *"
+    - cron: "37 14 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days back to re-read, ending yesterday (default 3)"
+        type: string
+        default: ""
+      dry_run:
+        description: "Fetch and print, write nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dashboard-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Pull sales into the dashboard
+        env:
+          # Same Amazon credentials as the inventory collector. Reusing them
+          # rather than minting a second set is why the dashboard lives in
+          # this repository: one place holds marketplace credentials.
+          LWA_CLIENT_ID: ${{ secrets.LWA_CLIENT_ID }}
+          LWA_CLIENT_SECRET: ${{ secrets.LWA_CLIENT_SECRET }}
+          LWA_REFRESH_TOKEN: ${{ secrets.LWA_REFRESH_TOKEN }}
+          FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
+          # The dashboard's own Supabase project, not the storefront's.
+          DASHBOARD_SUPABASE_URL: ${{ secrets.DASHBOARD_SUPABASE_URL }}
+          DASHBOARD_SUPABASE_SERVICE_KEY: ${{ secrets.DASHBOARD_SUPABASE_SERVICE_KEY }}
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.days }}" ]; then
+            ARGS="$ARGS --days ${{ inputs.days }}"
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python -m collector.dashboard_sync $ARGS
