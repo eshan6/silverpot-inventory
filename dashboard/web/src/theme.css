@@ -1,0 +1,156 @@
+/* Same visual language as the inventory dashboard in public/index.html:
+   editorial, monospace numerals, navy and teal, uppercase micro-labels. The
+   tokens are copied rather than imported because that page is a standalone
+   static file with no build step; if they ever diverge, that page is the
+   original and this should follow it. */
+
+:root {
+  --ink: #12212f;
+  --navy: #1f4e79;
+  --teal: #0f6e56;
+  --paper: #fbfbf9;
+  --rule: #dfe3e6;
+  --dim: #7a828a;
+  --alert: #a32d2d;
+  --warn: #8a5a0b;
+  --wash: #edeff1;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--navy); }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+/* ---------------------------------------------------------------- header */
+
+.masthead { border-bottom: 2px solid var(--navy); padding-bottom: 0.9rem; margin-bottom: 1.25rem; }
+.masthead-top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.masthead h1 { font-size: 1.05rem; font-weight: 620; letter-spacing: -0.01em; color: var(--navy); }
+.who { font-family: var(--mono); font-size: 0.66rem; color: var(--dim); }
+.who button {
+  font: inherit; background: none; border: none; color: var(--navy);
+  cursor: pointer; padding: 0; margin-left: 0.6rem; text-decoration: underline;
+}
+
+nav { display: flex; gap: 1.25rem; margin-top: 0.85rem; align-items: center; flex-wrap: wrap; }
+nav a {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 600; color: var(--dim); text-decoration: none;
+  padding-bottom: 0.3rem; border-bottom: 2px solid transparent;
+}
+nav a.on { color: var(--navy); border-bottom-color: var(--navy); }
+
+/* The marketplace switcher. Amazon and Walmart are never shown together, by
+   design: one is selected, always, and there is no "both". */
+.markets { margin-left: auto; display: flex; border: 1px solid var(--rule); }
+.markets button {
+  font-family: var(--mono); font-size: 0.64rem; text-transform: uppercase;
+  letter-spacing: 0.06em; padding: 0.3rem 0.7rem; background: none;
+  border: none; cursor: pointer; color: var(--dim);
+}
+.markets button.on { background: var(--navy); color: #fff; }
+.markets button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---------------------------------------------------------------- status */
+
+.stamp { font-family: var(--mono); font-size: 0.66rem; color: var(--dim); }
+
+.banner {
+  font-family: var(--mono); font-size: 0.68rem; padding: 0.55rem 0.7rem;
+  margin-bottom: 1.25rem; border-left: 3px solid var(--dim); background: var(--wash);
+}
+.banner.stale { border-left-color: var(--warn); color: var(--warn); }
+.banner.bad { border-left-color: var(--alert); color: var(--alert); }
+
+/* ---------------------------------------------------------------- stats */
+
+.totals { display: flex; gap: 2.5rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
+.stat .n { font-family: var(--mono); font-size: 1.5rem; font-weight: 600; letter-spacing: -0.03em; }
+.stat .l { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--dim); margin-top: 0.15rem; }
+.stat .d { font-family: var(--mono); font-size: 0.64rem; color: var(--dim); margin-top: 0.2rem; }
+.stat.risk .n { color: var(--alert); }
+.stat.good .n { color: var(--teal); }
+/* A metric with no answer prints as a dash, never as zero: dividing by no
+   sales has no answer, and 0 would read as a perfect day. */
+.stat .n.none { color: var(--dim); font-weight: 400; }
+
+/* ---------------------------------------------------------------- controls */
+
+.controls {
+  display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;
+  margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--rule);
+}
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
+.field label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+.field input, .field select {
+  font-family: var(--mono); font-size: 0.72rem; padding: 0.3rem 0.4rem;
+  border: 1px solid var(--rule); background: #fff; color: var(--ink);
+}
+.presets { display: flex; gap: 0.4rem; }
+.presets button {
+  font-family: var(--mono); font-size: 0.64rem; padding: 0.3rem 0.55rem;
+  border: 1px solid var(--rule); background: #fff; cursor: pointer; color: var(--dim);
+}
+.presets button.on { border-color: var(--navy); color: var(--navy); }
+
+.btn {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em;
+  font-weight: 600; padding: 0.4rem 0.8rem; border: 1px solid var(--navy);
+  background: var(--navy); color: #fff; cursor: pointer;
+}
+.btn.ghost { background: none; color: var(--navy); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------------------------------------------------------------- tables */
+
+table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+th {
+  text-align: right; padding: 0.4rem 0.5rem; font-size: 0.6rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.07em; color: var(--dim);
+  border-bottom: 1px solid var(--rule); white-space: nowrap;
+}
+th:first-child, td:first-child { text-align: left; }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--navy); }
+td { padding: 0.5rem; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; text-align: right; }
+td.num { font-family: var(--mono); }
+td.name { font-weight: 500; }
+td.name small { display: block; font-family: var(--mono); font-size: 0.62rem; color: var(--dim); font-weight: 400; }
+tbody tr:hover { background: rgba(31, 78, 121, 0.035); }
+
+.bar { display: flex; height: 15px; background: var(--wash); width: 100%; min-width: 120px; }
+.bar span { display: block; }
+.seg-a { background: var(--navy); }
+.seg-b { background: var(--teal); }
+
+/* ---------------------------------------------------------------- states */
+
+.empty, .loading {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--dim);
+  padding: 2.5rem 0; text-align: center;
+}
+.empty strong { display: block; color: var(--ink); margin-bottom: 0.3rem; font-weight: 600; }
+
+/* ---------------------------------------------------------------- login */
+
+.login { max-width: 340px; margin: 12vh auto; padding: 0 1.5rem; }
+.login h1 { font-size: 1.05rem; font-weight: 620; color: var(--navy); margin-bottom: 0.4rem; }
+.login p { font-size: 0.74rem; color: var(--dim); margin-bottom: 1.5rem; line-height: 1.5; }
+.login .field { margin-bottom: 0.9rem; }
+.login .field input { width: 100%; }
+.login .btn { width: 100%; padding: 0.55rem; }
+.login .err {
+  font-family: var(--mono); font-size: 0.68rem; color: var(--alert);
+  margin-bottom: 0.9rem; line-height: 1.4;
+}
+.login .note { font-family: var(--mono); font-size: 0.64rem; color: var(--dim); margin-top: 1rem; line-height: 1.5; }
