@@ -303,38 +303,69 @@ def main() -> int:
 
     sku_map = load_sku_map()
     total = 0
-    try:
-        for window_start, window_end in spans:
+    failed: list[tuple[date, date]] = []
+    reached: date | None = None
+
+    # A window that fails does not end the run. Windows are taken oldest
+    # first, and the oldest are exactly the ones that fall off the end of
+    # Amazon's retention - so aborting on the first failure would throw away
+    # every later window that would have worked. Reaching back too far should
+    # cost the months that are genuinely gone and nothing else.
+    for window_start, window_end in spans:
+        try:
             rows, used = fetch_window(token, window_start, window_end)
-            rows, unknown = attach_internal_codes(rows, sku_map)
-            units = sum(r["units"] for r in rows)
-            print(f"  {window_start}..{window_end}: {len(rows)} row(s), "
-                  f"{units} units  [{used}]")
-            if unknown:
-                print(f"    WARN unmapped SKU(s): {', '.join(sorted(unknown))}",
-                      file=sys.stderr)
-            if args.dry_run:
-                continue
+        except Exception as exc:  # noqa: BLE001
+            print(f"  {window_start}..{window_end}: unavailable "
+                  f"({net.describe_error(exc)})", file=sys.stderr)
+            failed.append((window_start, window_end))
+            continue
+
+        rows, unknown = attach_internal_codes(rows, sku_map)
+        units = sum(r["units"] for r in rows)
+        print(f"  {window_start}..{window_end}: {len(rows)} row(s), "
+              f"{units} units  [{used}]")
+        if unknown:
+            print(f"    WARN unmapped SKU(s): {', '.join(sorted(unknown))}",
+                  file=sys.stderr)
+        if args.dry_run:
+            continue
+        try:
             total += dashboard_db.upsert("sales_daily", rows)
-    except Exception as exc:  # noqa: BLE001
-        print(f"History FAILED: {net.describe_error(exc)}", file=sys.stderr)
-        dashboard_db.finish_run(run_id, "failed", error=net.describe_error(exc))
-        return 1
+        except Exception as exc:  # noqa: BLE001
+            # A write that fails is different from a report that is gone, and
+            # is worth stopping for: it will fail for every later window too.
+            print(f"Write FAILED: {net.describe_error(exc)}", file=sys.stderr)
+            dashboard_db.finish_run(run_id, "failed",
+                                    error=net.describe_error(exc))
+            return 1
+        if reached is None:
+            reached = window_start
 
     if args.dry_run:
         return 0
 
+    if reached is None:
+        print("No window could be collected; nothing was written.",
+              file=sys.stderr)
+        dashboard_db.finish_run(run_id, "failed",
+                                error="no window could be collected")
+        return 1
+
     dashboard_db.finish_run(run_id, "ok", rows_written=total)
     print(f"Wrote {total} row(s) to sales_daily")
+    if failed:
+        print(f"{len(failed)} window(s) could not be collected, the oldest "
+              f"first - most likely past Amazon's retention. History now "
+              f"starts {reached}.")
 
     # The day-by-day walk has nothing left to do below this point, so tell it
     # so rather than leaving it to spend months of runs rediscovering that.
     dashboard_db.set_setting(BACKFILL_SETTING, {
-        "cursor": start.isoformat(),
+        "cursor": reached.isoformat(),
         "empty_streak": 0,
         "done": True,
     })
-    print(f"Day-by-day backfill marked complete from {start} onwards")
+    print(f"Day-by-day backfill marked complete from {reached} onwards")
     return 0
 
 
