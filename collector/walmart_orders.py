@@ -74,16 +74,28 @@ UNCOUNTED_STATUSES = frozenset({"Cancelled", "Canceled"})
 # The charge that is the item's own price, as opposed to shipping or tax.
 PRODUCT_CHARGE_TYPES = frozenset({"PRODUCT", "ITEM"})
 
-# How an order was fulfilled. This matters more than it looks: two probes
-# against the live account returned zero orders - one over a fortnight, one
-# over eight months - while WFS held stock the whole time, which points at the
-# default view of /v3/orders not including WFS-fulfilled orders rather than at
-# an absence of sales. Silverpot sells through WFS, so asking for the wrong
-# view means a permanently empty Walmart tab that never errors.
+# How an order was fulfilled, and the single most important line in this file.
 #
-# The probe asks Walmart which view holds the orders rather than this file
-# asserting it.
+# Confirmed against the live account on 2026-09-09, over 2026-06-01..09-08:
+#
+#     (default)        0 order(s)
+#     WFSFulfilled     105 order(s)
+#     SellerFulfilled  0 order(s)
+#     3PLFulfilled     0 order(s)
+#
+# The default view of /v3/orders does not include WFS-fulfilled orders, and
+# every Silverpot order is WFS-fulfilled. Two earlier probes had returned zero
+# across a fortnight and then across eight months, which reads exactly like a
+# channel with no sales - a wrong answer that never errors and never explains
+# itself. This is why the field names in this file were treated as guesses
+# until something confirmed them.
+#
+# All three explicit views are fetched and merged rather than just the one
+# that has orders today. They are disjoint - an order is fulfilled one way -
+# so merging cannot double count, and a future seller-fulfilled order appears
+# without anyone remembering to come back here.
 SHIP_NODE_TYPES = (None, "WFSFulfilled", "SellerFulfilled", "3PLFulfilled")
+FETCH_VIEWS = ("WFSFulfilled", "SellerFulfilled", "3PLFulfilled")
 
 
 def _first(node: dict, names: tuple[str, ...]):
@@ -271,6 +283,22 @@ def _stamp(day: date, end_of_day: bool = False) -> str:
     return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def fetch_all_views(token: str, start: date, end: date, sess=None,
+                    views: tuple[str, ...] = FETCH_VIEWS) -> list[dict]:
+    """Every order in the window, across every fulfilment view.
+
+    See SHIP_NODE_TYPES: the default view omits WFS orders entirely, which is
+    all of Silverpot's, so asking for one view is how this ends up quietly
+    reporting no Walmart sales at all.
+    """
+    sess = sess or net.session()
+    rows: list[dict] = []
+    for view in views:
+        rows.extend(fetch_range(token, start, end, sess=sess,
+                                ship_node_type=view))
+    return merge(rows)
+
+
 def fetch_range(token: str, start: date, end: date, sess=None,
                 ship_node_type: str | None = None) -> list[dict]:
     """Every order created between two Eastern days, following the cursor."""
@@ -388,12 +416,16 @@ def probe(token: str, start: date | None = None, end: date | None = None) -> int
         except Exception as exc:  # noqa: BLE001
             print(f"  {node_type or '(default)':<16} {net.describe_error(exc)}")
     print(f"  -> orders are visible under: {best or 'NONE of these views'}\n")
+    # Dump the shape from a view that actually has orders in it: the whole
+    # point is to see the fields inside an order, and the default view has none.
+    shape_params = {"createdStartDate": _stamp(start),
+                    "createdEndDate": _stamp(yesterday, end_of_day=True),
+                    "limit": "200"}
+    if best and best != "(default)":
+        shape_params["shipNodeType"] = best
     resp = sess.get(f"{WALMART_HOST}{ORDERS_PATH}",
                     headers=walmart._headers(token),
-                    params={"createdStartDate": _stamp(start),
-                            "createdEndDate": _stamp(yesterday, end_of_day=True),
-                            "limit": "200"},
-                    timeout=net.TIMEOUT)
+                    params=shape_params, timeout=net.TIMEOUT)
     print(f"HTTP {resp.status_code} for {start}..{yesterday}")
     resp.raise_for_status()
     body = resp.json() or {}
@@ -498,7 +530,7 @@ def main() -> int:
         run_id = dashboard_db.start_run(MARKETPLACE, SOURCE, start, end)
 
     try:
-        rows = fetch_range(token, start, end)
+        rows = fetch_all_views(token, start, end)
     except Exception as exc:  # noqa: BLE001
         print(f"Walmart FAILED: {net.describe_error(exc)}", file=sys.stderr)
         dashboard_db.finish_run(run_id, "failed", error=net.describe_error(exc))

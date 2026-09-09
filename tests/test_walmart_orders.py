@@ -212,3 +212,45 @@ class TestPaging(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFulfilmentViews(unittest.TestCase):
+    """The default view of /v3/orders omits WFS orders, which is all of ours.
+
+    Confirmed against the live account on 2026-09-09: the default view
+    returned 0 orders over a three-month window while WFSFulfilled returned
+    105. Asking for one view is how this ends up reporting no Walmart sales
+    at all, without ever erroring.
+    """
+
+    def test_every_explicit_view_is_fetched(self):
+        self.assertEqual(set(wo.FETCH_VIEWS),
+                         {"WFSFulfilled", "SellerFulfilled", "3PLFulfilled"})
+
+    def test_the_default_view_is_never_relied_on_alone(self):
+        # None appears in the probe's list, because the probe asks about it,
+        # but it must never be what a real run fetches.
+        self.assertNotIn(None, wo.FETCH_VIEWS)
+        self.assertNotIn("(default)", wo.FETCH_VIEWS)
+
+    def test_views_merge_without_double_counting(self):
+        # An order is fulfilled exactly one way, so the views are disjoint and
+        # merging them is safe. This pins the merge, not the disjointness.
+        calls: list[str | None] = []
+
+        def fake_fetch(token, start, end, sess=None, ship_node_type=None):
+            calls.append(ship_node_type)
+            if ship_node_type == "WFSFulfilled":
+                return wo.parse(envelope(order()))
+            return []
+
+        real = wo.fetch_range
+        wo.fetch_range = fake_fetch
+        try:
+            rows = wo.fetch_all_views("tok", date(2026, 3, 1), date(2026, 3, 31))
+        finally:
+            wo.fetch_range = real
+
+        self.assertEqual(calls, list(wo.FETCH_VIEWS))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["units"], 2)
