@@ -71,8 +71,14 @@ jobs:
         env:
           WALMART_CLIENT_ID: ${{ secrets.WALMART_CLIENT_ID }}
           WALMART_CLIENT_SECRET: ${{ secrets.WALMART_CLIENT_SECRET }}
+          # The advertising gateway does not take the OAuth token. These are
+          # the self-serve seller credentials for its signed scheme, and the
+          # sweep skips those probes rather than failing when they are absent.
+          WALMART_CONSUMER_ID: ${{ secrets.WALMART_CONSUMER_ID }}
+          WALMART_PRIVATE_KEY: ${{ secrets.WALMART_PRIVATE_KEY }}
+          WALMART_KEY_VERSION: ${{ secrets.WALMART_KEY_VERSION }}
           FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
-        run: python -m collector.walmart_ads --diagnose
+        run: python -m collector.walmart_ads --explore
 
       - name: Pull advertising into the dashboard
         if: ${{ inputs.walmart_diagnose != true }}

@@ -1,10 +1,11 @@
-"""The Walmart Connect diagnostic: does it read status codes honestly?
+"""The Walmart advertising sweep: does it read its own results honestly?
 
-This module exists to answer one question with data instead of a documentation
+This module exists to answer a question with data instead of a documentation
 quote, so the thing worth testing is its reasoning, not its HTTP. A diagnostic
-that reports a confident verdict off a run that did not work is worse than no
-diagnostic - the SP-API one did exactly that once and announced the app was
-dead while the endpoint that mattered was answering 200.
+that draws a confident conclusion from a run that did not work is worse than
+no diagnostic - the SP-API one did exactly that once and announced the app was
+dead while the endpoint that mattered was answering 200, and the first draft
+of this one called a header complaint a permission denial.
 
     python -m unittest discover -s tests -v
 """
@@ -17,115 +18,139 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from collector import walmart_ads as wa  # noqa: E402
 
 CONTROL = wa.CONTROL
+GATEWAY = ('{"details":{"Description":"Request is missing required security '
+           'headers, please read documentation for security headers"}}')
 
 
-def results(control=200, notes=None, **ads):
-    notes = notes or {}
-    out = [(label, ads.get(label, 404), notes.get(label, ""))
-           for label, _m, _u in wa.PROBES if label != CONTROL]
-    out.append((CONTROL, control, ""))
-    return out
+def rec(label, status=404, note="", mode=wa.OAUTH, skipped=False):
+    r = {"label": label, "mode": mode, "url": "https://example.invalid",
+         "status": status, "note": note}
+    if skipped:
+        r["skipped"] = True
+        r["status"] = None
+    return r
+
+
+def results(control=200, *extra):
+    return [rec(CONTROL, control), *extra]
 
 
 class TestVerdict(unittest.TestCase):
     def test_a_dead_control_makes_the_run_inconclusive(self):
         # Everything refused *and* the known-good endpoint refused is a broken
         # token, not a finding about advertising.
-        said = " ".join(wa.verdict(results(control=401,
-                                          **{"Sponsored Search advertisers": 401})))
+        said = " ".join(wa.verdict(results(
+            401, rec("WPA advertiser (oauth)", 401, GATEWAY))))
         self.assertIn("inconclusive", said.lower())
-        self.assertNotIn("Partner Network", said)
+        self.assertNotIn("gateway refused", said)
 
     def test_a_network_failure_is_inconclusive_too(self):
-        said = " ".join(wa.verdict(results(control=None)))
+        said = " ".join(wa.verdict(results(None)))
         self.assertIn("inconclusive", said.lower())
 
-    def test_denial_is_only_reported_when_the_control_answered(self):
+    def test_a_reachable_endpoint_is_the_headline(self):
         said = " ".join(wa.verdict(results(
-            control=200, **{"Sponsored Search advertisers": 403,
-                            "Sponsored Search campaigns": 401})))
-        self.assertIn("refused", said.lower())
-        self.assertIn("Sponsored Search advertisers", said)
-        self.assertIn("Partner Network", said)
+            200,
+            rec("Marketplace: SEM report", 200),
+            rec("WPA advertiser (oauth)", 403, GATEWAY))))
+        self.assertIn("there is a route", said)
+        self.assertIn("Marketplace: SEM report", said)
 
-    def test_a_reachable_endpoint_wins_over_the_denied_ones(self):
-        # One 200 among the 403s is a route, and the verdict must lead with it
-        # rather than averaging the failures into "denied".
-        said = " ".join(wa.verdict(results(
-            control=200, **{"Sponsored Search advertisers": 200,
-                            "Sponsored Search campaigns": 403})))
-        self.assertIn("reach Walmart Connect", said)
-        self.assertIn("Sponsored Search advertisers", said)
-
-    def test_a_reachable_endpoint_still_demands_a_probe_first(self):
-        # Nine wrong guesses at a Walmart field name is the reason this line
-        # exists. Reachable is not the same as understood.
-        said = " ".join(wa.verdict(results(
-            control=200, **{"Sponsored Search campaigns": 200})))
-        self.assertIn("shape", said.lower())
+    def test_a_reachable_endpoint_still_demands_a_shape_probe(self):
+        # Nine wrong guesses at a Walmart field name is why this line exists.
+        # Reachable is not the same as understood.
+        said = " ".join(wa.verdict(results(200, rec("WPA campaign (signed)", 200))))
+        self.assertIn("shape probe", said)
 
     def test_a_gateway_rejection_is_not_read_as_a_denial(self):
         # The live 403 on 2026-09-09 was "Request is missing required security
-        # headers" - the gateway refusing the request shape, before anything
+        # headers" - the gateway refusing the request's shape before anything
         # looked at what this account may do. Calling that "advertising is
-        # refused" would be a false conclusion drawn from a real response, and
-        # it is the exact mistake this module was written to avoid.
+        # refused" is a false conclusion drawn from a real response.
         said = " ".join(wa.verdict(results(
-            control=200,
-            notes={"Sponsored Search advertisers":
-                   '{"details":{"Description":"Request is missing required '
-                   'security headers, please read documentation"}}'},
-            **{"Sponsored Search advertisers": 403})))
-        self.assertIn("gateway", said.lower())
-        self.assertIn("does NOT prove", said)
-        self.assertNotIn("advertising is refused", said)
+            200, rec("WPA advertiser (oauth)", 403, GATEWAY))))
+        self.assertIn("headers, not access", said)
+        self.assertNotIn("genuinely refused", said)
 
     def test_a_plain_403_is_still_read_as_a_denial(self):
-        # The gateway case must not swallow a real refusal.
         said = " ".join(wa.verdict(results(
-            control=200,
-            notes={"Sponsored Search advertisers": "Not authorized for this API"},
-            **{"Sponsored Search advertisers": 403})))
-        self.assertIn("advertising is refused", said)
+            200, rec("WPA advertiser (signed)", 403, "Not authorized",
+                     mode=wa.SIGNED))))
+        self.assertIn("genuinely refused", said)
+        self.assertIn("Partner Network", said)
 
-    def test_all_404_is_a_wrong_path_not_a_denial(self):
-        said = " ".join(wa.verdict(results(control=200)))
-        self.assertIn("wrong path", said.lower())
-        self.assertIn("says nothing", said.lower())
+    def test_a_signed_request_refused_for_its_headers_blames_our_signature(self):
+        # The important case. If signing is configured and the gateway still
+        # complains about headers, the bug is in this repository - a wrong
+        # canonical string or key version - and telling the user to go apply
+        # for access would send them off to solve the wrong problem.
+        said = " ".join(wa.verdict(results(
+            200, rec("WPA advertiser (signed)", 403, GATEWAY, mode=wa.SIGNED))))
+        self.assertIn("signature itself is being rejected", said)
+        self.assertIn("not an approval to go and ask for", said)
+
+    def test_when_signing_is_unconfigured_it_names_the_free_self_serve_fix(self):
+        said = " ".join(wa.verdict(results(
+            200,
+            rec("WPA advertiser (oauth)", 403, GATEWAY),
+            rec("WPA advertiser (signed)", skipped=True, mode=wa.SIGNED))))
+        self.assertIn("Consumer IDs & Private Keys", said)
+        self.assertIn("skipped", said.lower())
+
+    def test_404s_say_nothing_either_way(self):
+        said = " ".join(wa.verdict(results(200, rec("Marketplace: ads", 404))))
+        self.assertIn("not a real path", said)
+        self.assertIn("says nothing", said)
 
 
 class TestProbes(unittest.TestCase):
     def test_the_control_is_one_of_the_probes(self):
-        self.assertIn(CONTROL, [label for label, _m, _u in wa.PROBES])
+        self.assertIn(CONTROL, [label for label, _m, _u, _a in wa.PROBES])
 
     def test_every_probe_is_a_read(self):
         # A diagnostic that can create a campaign is not a diagnostic.
-        for _label, method, _url in wa.PROBES:
+        for _label, method, _url, _auth in wa.PROBES:
             self.assertEqual(method, "GET")
 
-    def test_probe_reports_a_status_per_candidate_and_survives_a_throw(self):
-        class Boom(Exception):
-            pass
+    def test_the_free_routes_are_tried_before_the_ones_needing_a_new_key(self):
+        # If something we already hold answers, nobody has to generate
+        # anything. Ordering is for the reader of the log, and it is pinned so
+        # a later edit does not bury the cheap answer under the expensive one.
+        modes = [auth for _l, _m, _u, auth in wa.PROBES]
+        self.assertLess(modes.index(wa.OAUTH), modes.index(wa.SIGNED))
 
+    def test_all_three_auth_modes_are_exercised(self):
+        self.assertEqual({auth for _l, _m, _u, auth in wa.PROBES},
+                         {wa.OAUTH, wa.SIGNED, wa.NONE})
+
+    def test_a_probe_that_throws_does_not_end_the_sweep(self):
         class FakeResp:
             status_code = 403
             text = "Not authorized"
 
-        calls = []
-
         class FakeSession:
             def request(self, method, url, **kw):
-                calls.append(url)
                 if "campaign" in url:
-                    raise Boom("no route")
+                    raise RuntimeError("no route")
                 return FakeResp()
 
         out = wa.probe("tok", sess=FakeSession())
         self.assertEqual(len(out), len(wa.PROBES))
-        self.assertEqual(len(calls), len(wa.PROBES))
-        codes = {label: code for label, code, _n in out}
-        self.assertIsNone(codes["Sponsored Search campaigns"])
-        self.assertEqual(codes["Sponsored Search advertisers"], 403)
+
+    def test_signed_probes_are_skipped_not_failed_when_unconfigured(self):
+        class FakeResp:
+            status_code = 200
+            text = "{}"
+
+        class FakeSession:
+            def request(self, method, url, **kw):
+                return FakeResp()
+
+        out = wa.probe("tok", sess=FakeSession())
+        signed = [r for r in out if r["mode"] == wa.SIGNED]
+        self.assertTrue(signed)
+        self.assertTrue(all(r.get("skipped") for r in signed),
+                        "signed probes must skip, not fail, without credentials")
 
     def test_no_token_reaches_the_output(self):
         class FakeResp:
@@ -143,6 +168,9 @@ class TestProbes(unittest.TestCase):
 class TestEntryPoint(unittest.TestCase):
     def test_an_unknown_flag_does_not_silently_run_a_diagnosis(self):
         self.assertEqual(wa.main(["--sync"]), 2)
+
+    def test_no_argument_does_not_silently_run_a_diagnosis(self):
+        self.assertEqual(wa.main([]), 2)
 
 
 if __name__ == "__main__":
