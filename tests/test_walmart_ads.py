@@ -19,9 +19,10 @@ from collector import walmart_ads as wa  # noqa: E402
 CONTROL = wa.CONTROL
 
 
-def results(control=200, **ads):
-    out = [(label, ads.get(label, 404), "") for label, _m, _u in wa.PROBES
-           if label != CONTROL]
+def results(control=200, notes=None, **ads):
+    notes = notes or {}
+    out = [(label, ads.get(label, 404), notes.get(label, ""))
+           for label, _m, _u in wa.PROBES if label != CONTROL]
     out.append((CONTROL, control, ""))
     return out
 
@@ -62,6 +63,30 @@ class TestVerdict(unittest.TestCase):
         said = " ".join(wa.verdict(results(
             control=200, **{"Sponsored Search campaigns": 200})))
         self.assertIn("shape", said.lower())
+
+    def test_a_gateway_rejection_is_not_read_as_a_denial(self):
+        # The live 403 on 2026-09-09 was "Request is missing required security
+        # headers" - the gateway refusing the request shape, before anything
+        # looked at what this account may do. Calling that "advertising is
+        # refused" would be a false conclusion drawn from a real response, and
+        # it is the exact mistake this module was written to avoid.
+        said = " ".join(wa.verdict(results(
+            control=200,
+            notes={"Sponsored Search advertisers":
+                   '{"details":{"Description":"Request is missing required '
+                   'security headers, please read documentation"}}'},
+            **{"Sponsored Search advertisers": 403})))
+        self.assertIn("gateway", said.lower())
+        self.assertIn("does NOT prove", said)
+        self.assertNotIn("advertising is refused", said)
+
+    def test_a_plain_403_is_still_read_as_a_denial(self):
+        # The gateway case must not swallow a real refusal.
+        said = " ".join(wa.verdict(results(
+            control=200,
+            notes={"Sponsored Search advertisers": "Not authorized for this API"},
+            **{"Sponsored Search advertisers": 403})))
+        self.assertIn("advertising is refused", said)
 
     def test_all_404_is_a_wrong_path_not_a_denial(self):
         said = " ".join(wa.verdict(results(control=200)))

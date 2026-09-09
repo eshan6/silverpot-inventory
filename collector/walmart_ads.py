@@ -62,6 +62,14 @@ PARTNER_HINT = (
     "   Level -> Add Partner); they do not mint their own credentials."
 )
 
+# Confirmed against the live account on 2026-09-09. The WPA endpoints answer
+# 403 with this, which is *not* "you may not advertise" - it is the gateway
+# refusing the request before it ever looks at what we are allowed to do. The
+# distinction matters: one is a verdict about access, the other is a verdict
+# about our headers, and reading the second as the first is how you conclude
+# something false from a real response.
+GATEWAY_REJECTION = "missing required security headers"
+
 
 def _trim(text: str, limit: int = 160) -> str:
     body = " ".join((text or "").split())
@@ -98,6 +106,8 @@ def verdict(results: list[tuple[str, int | None, str]]) -> list[str]:
     by_label = {label: code for label, code, _note in results}
     control = by_label.get(CONTROL)
     ads = {label: code for label, code, _note in results if label != CONTROL}
+    notes = {label: (note or "").lower() for label, _code, note in results
+             if label != CONTROL}
 
     if control != 200:
         return [
@@ -113,6 +123,22 @@ def verdict(results: list[tuple[str, int | None, str]]) -> list[str]:
             f"   answering: {', '.join(reachable)}",
             "Probe one of those for its response shape before trusting a figure",
             "from it. No advertising number gets written off a guessed field.",
+        ]
+
+    gateway = sorted(l for l, code in ads.items()
+                     if code in (401, 403) and GATEWAY_REJECTION in notes.get(l, ""))
+    if gateway:
+        return [
+            "VERDICT: rejected at the gateway, before any question of access.",
+            f"   turned away for its headers: {', '.join(gateway)}",
+            "Walmart Connect does not take the Marketplace OAuth token at all. It",
+            "wants the older signed scheme - a consumer id and an RSA signature -",
+            "and those are issued to a partner, not generated from Seller Center.",
+            "",
+            "So this run does NOT prove we are denied advertising. It proves the",
+            "credentials in this repository are the wrong kind of credential, which",
+            "is what you would expect if the documentation below is right.",
+            f"   {PARTNER_HINT}",
         ]
 
     denied = sorted(l for l, code in ads.items() if code in (401, 403))
