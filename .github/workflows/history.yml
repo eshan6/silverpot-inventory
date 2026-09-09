@@ -1,0 +1,77 @@
+name: Backfill history
+
+# Fills sales history from the Orders *report*, which covers a whole date
+# range in one request. The Orders API spends one throttled call per day, so a
+# year of history is hours of waiting there and a single run here.
+#
+# Manual only, and deliberately so: this is a one-off. Once a day is in
+# sales_daily it stays, and the daily job keeps the recent end current.
+#
+# Run `probe` first. It prints the report's column names - and nothing from
+# any row, because an all-orders report carries buyer names and addresses and
+# this repository's logs are public.
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "First day to collect, YYYY-MM-DD (e.g. 2026-01-01)"
+        type: string
+        default: ""
+      to:
+        description: "Last day to collect (default: just before the daily window)"
+        type: string
+        default: ""
+      probe:
+        description: "Print the report's column names only, write nothing"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Fetch and parse, print counts, write nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: history-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Backfill sales history
+        env:
+          LWA_CLIENT_ID: ${{ secrets.LWA_CLIENT_ID }}
+          LWA_CLIENT_SECRET: ${{ secrets.LWA_CLIENT_SECRET }}
+          LWA_REFRESH_TOKEN: ${{ secrets.LWA_REFRESH_TOKEN }}
+          FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
+          DASHBOARD_SUPABASE_URL: ${{ secrets.DASHBOARD_SUPABASE_URL }}
+          DASHBOARD_SUPABASE_SERVICE_KEY: ${{ secrets.DASHBOARD_SUPABASE_SERVICE_KEY }}
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.from }}" ]; then
+            ARGS="$ARGS --from ${{ inputs.from }}"
+          fi
+          if [ -n "${{ inputs.to }}" ]; then
+            ARGS="$ARGS --to ${{ inputs.to }}"
+          fi
+          if [ "${{ inputs.probe }}" = "true" ]; then
+            ARGS="$ARGS --probe"
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python -m collector.orders_report $ARGS
