@@ -248,6 +248,35 @@ they needed no new approval and no new secret. Walmart Connect, their
 advertising API, is a separate and harder approval, so it is postponed rather
 than promised.
 
+Harder in a specific way, and it is worth being precise about it because it is
+not the Amazon situation. Amazon's Advertising API has a self-serve
+application: you fill in a form and wait. Walmart Connect's Ads APIs are
+documented as available to *Walmart Connect Partner Network* partners -
+agencies and tech platforms - and an advertiser's own route is to authorise
+one of those partners from the Ad Center admin page. There is no button that
+mints advertising credentials for a seller.
+
+Since this repository has been wrong from Walmart's documentation twice
+already, that is checked rather than assumed. Run the *Ads sync* workflow with
+`walmart_diagnose` ticked: `collector/walmart_ads.py` asks each candidate
+Walmart Connect endpoint with the Marketplace token we already hold and prints
+the status codes. It reads only - it cannot create a campaign or spend a
+dollar - and it judges a known-good endpoint first, so a broken token reports
+as *inconclusive* rather than as a denial.
+
+Three outcomes and what each means:
+
+| What it prints | What it means |
+|---|---|
+| Any advertising endpoint answers 200 | There is a route. Probe it for its response shape before any figure is written. |
+| 401 / 403 with the control at 200 | The documentation is right: this needs an approval or a partner authorisation. |
+| Everything 404 with the control at 200 | Wrong paths, not denied access. Says nothing either way. |
+
+Whichever way it lands, the database is already shaped for the answer:
+`ads_daily` and `ads_search_terms` both carry `marketplace` and `ad_program`,
+and `spend_daily` joins per marketplace, so Walmart rows need an ingestion
+module and no migration.
+
 Combined Amazon+Walmart views are meant to be impossible, and keeping
 `marketplace` on every row and every query is how that stays true.
 

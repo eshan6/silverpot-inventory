@@ -35,6 +35,10 @@ on:
         description: "Fetch and normalize, print, write nothing"
         type: boolean
         default: false
+      walmart_diagnose:
+        description: "Ask Walmart Connect whether our Marketplace credentials reach it. Reads only."
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -57,7 +61,21 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      # Walmart advertising is a different product with a different front door,
+      # so this is a diagnostic and not a sync: it reads status codes and
+      # writes nothing anywhere. It runs instead of the Amazon pull, never
+      # alongside it, because it answers a question rather than collecting a
+      # number and a failed answer must not look like a failed morning.
+      - name: Ask Walmart Connect what our credentials reach
+        if: ${{ inputs.walmart_diagnose == true }}
+        env:
+          WALMART_CLIENT_ID: ${{ secrets.WALMART_CLIENT_ID }}
+          WALMART_CLIENT_SECRET: ${{ secrets.WALMART_CLIENT_SECRET }}
+          FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
+        run: python -m collector.walmart_ads --diagnose
+
       - name: Pull advertising into the dashboard
+        if: ${{ inputs.walmart_diagnose != true }}
         env:
           # Advertising credentials are their own set. They are not the SP-API
           # ones under a different name: different registration, different
