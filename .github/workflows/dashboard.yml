@@ -37,6 +37,10 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # Generous, because a run that is still filling history spends most of its
+    # time waiting out Amazon's throttle. A cap all the same: a hung request
+    # should not hold a runner for six hours.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
