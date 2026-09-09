@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from datetime import date, timedelta
 
 from . import amazon, backfill, dashboard_db, net, orders
@@ -135,69 +136,91 @@ def main() -> int:
     return 0
 
 
-def extend_history(token: str, oldest_covered: date, sku_map) -> int:
-    """Reach one chunk further back, and remember how far we got.
+def extend_history(token: str, oldest_covered: date, sku_map,
+                   budget_seconds: int = backfill.BUDGET_SECONDS) -> int:
+    """Reach as far back as the time budget and Amazon's throttle allow.
+
+    Keeps taking chunks until the budget runs out, Amazon starts refusing, or
+    the walk is finished. Each chunk is written and its cursor saved before the
+    next begins, so an interrupted run keeps everything it collected: the cost
+    of running out of time is the current chunk, never the run.
 
     Deliberately total: every failure here is caught and reported. This runs
     after the day's real numbers are already written and the run is already
     recorded as ok, so an archive chunk that cannot be fetched is a smaller
     problem than a red run that makes today's figures look untrustworthy.
     """
+    written = 0
+    started = time.monotonic()
     try:
         state = backfill.State.from_settings(
             dashboard_db.get_setting(BACKFILL_SETTING))
-        chunk = backfill.next_chunk(state, start_from=oldest_covered,
-                                    today=orders.today_et())
-        print(backfill.describe(state, chunk))
-        if not chunk:
-            if not state.done:
-                dashboard_db.set_setting(
-                    BACKFILL_SETTING,
-                    backfill.advance(state, chunk, 0).as_settings())
-            return 0
 
-        # Newest day first, and one day at a time. getOrders allows a burst of
-        # about twenty calls and then roughly one a minute, so a chunk can be
-        # throttled off partway through; taking the days in this order means
-        # whatever was collected is contiguous with the history already held,
-        # and the cursor can move to cover exactly that. Fetching the chunk in
-        # one call instead would throw away a throttled chunk entirely and
-        # retry the same days on the next run, forever.
-        rows: list[dict] = []
-        completed: list[date] = []
-        for day in reversed(chunk):
-            try:
-                rows.extend(orders.fetch_days(token, [day]))
-            except Exception as exc:  # noqa: BLE001
-                print(f"  Backfill stopped at {day}: {net.describe_error(exc)} "
-                      f"- resuming here next run")
-                break
-            completed.append(day)
+        while True:
+            chunk = backfill.next_chunk(state, start_from=oldest_covered,
+                                        today=orders.today_et())
+            if not chunk:
+                print(backfill.describe(state, chunk))
+                if not state.done:
+                    state = backfill.advance(state, chunk, 0)
+                    dashboard_db.set_setting(BACKFILL_SETTING,
+                                             state.as_settings())
+                return written
+            print(backfill.describe(state, chunk))
 
-        if not completed:
-            return 0
+            # Newest day first, and one day at a time. getOrders allows a
+            # burst of calls and then throttles hard, so a chunk can be cut
+            # off partway; taking the days in this order means whatever was
+            # collected is contiguous with the history already held, and the
+            # cursor can move to cover exactly that. Fetching the chunk in one
+            # call instead would discard a throttled chunk entirely and retry
+            # the same days on the next run, forever.
+            rows: list[dict] = []
+            completed: list[date] = []
+            stopped = False
+            for day in reversed(chunk):
+                try:
+                    rows.extend(orders.fetch_days(token, [day]))
+                except Exception as exc:  # noqa: BLE001
+                    print(f"  Backfill stopped at {day}: "
+                          f"{net.describe_error(exc)} - resuming here next run")
+                    stopped = True
+                    break
+                completed.append(day)
 
-        rows, unknown = attach_internal_codes(rows, sku_map)
-        written = dashboard_db.upsert("sales_daily", rows)
+            if not completed:
+                return written
 
-        units = sum(r["units"] for r in rows)
-        completed.sort()
-        print(f"Backfill: {written} row(s), {units} units for "
-              f"{completed[0]}..{completed[-1]}")
-        if unknown:
-            print(f"  WARN unmapped SKU(s) in history: "
-                  f"{', '.join(sorted(unknown))}", file=sys.stderr)
+            rows, unknown = attach_internal_codes(rows, sku_map)
+            written += dashboard_db.upsert("sales_daily", rows)
 
-        after = backfill.advance(state, completed, len(rows),
-                                 today=orders.today_et())
-        dashboard_db.set_setting(BACKFILL_SETTING, after.as_settings())
-        if after.done:
-            print(f"Backfill: finished - history now reaches {after.cursor}")
-        return written
+            units = sum(r["units"] for r in rows)
+            completed.sort()
+            print(f"  Backfill: {len(rows)} row(s), {units} units for "
+                  f"{completed[0]}..{completed[-1]}")
+            if unknown:
+                print(f"  WARN unmapped SKU(s) in history: "
+                      f"{', '.join(sorted(unknown))}", file=sys.stderr)
+
+            state = backfill.advance(state, completed, len(rows),
+                                     today=orders.today_et())
+            dashboard_db.set_setting(BACKFILL_SETTING, state.as_settings())
+
+            if state.done:
+                print(f"Backfill: finished - history now reaches {state.cursor}")
+                return written
+            if stopped:
+                return written
+
+            spent = time.monotonic() - started
+            if spent >= budget_seconds:
+                print(f"Backfill: {int(spent / 60)} minute budget spent, "
+                      f"history now reaches {state.cursor} - continuing next run")
+                return written
     except Exception as exc:  # noqa: BLE001 - see docstring
         print(f"Backfill skipped this run: {net.describe_error(exc)}",
               file=sys.stderr)
-        return 0
+        return written
 
 
 if __name__ == "__main__":

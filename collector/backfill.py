@@ -12,9 +12,10 @@ once its orders have settled, so re-reading 2025 every morning buys nothing.
 History has to be collected once; only the last few days need re-reading.
 
 So each run does two things: it re-reads the trailing window, as before, and
-then extends the archive one chunk further back. Twice a day at 30 days a
-chunk, two years fills in under a fortnight, unattended, and then stops
-forever.
+then extends the archive backwards for as long as its time budget and
+Amazon's throttle allow, a chunk at a time, writing each chunk before
+starting the next. It fills unattended and then stops forever - after which
+runs return here immediately and cost nothing.
 
 **Progress is a cursor, not a query.** The obvious alternative - look up the
 oldest row present and go back from there - stalls forever on a genuinely
@@ -44,6 +45,13 @@ HORIZON_DAYS = 730
 # history, so a chunk is sized to sit inside that burst rather than to fill a
 # job. Asking for more does not fetch more: it gets throttled partway.
 CHUNK_DAYS = 15
+
+# How long a run may spend extending the archive. Actions minutes are free on
+# a public repository, and this budget only applies while there is history left
+# to collect - once the walk finishes it returns immediately and runs are back
+# to about a minute. Generous, therefore: filling two years sooner is worth
+# more than a short job.
+BUDGET_SECONDS = 25 * 60
 
 # Six empty chunks in a row - about three months without a single order -
 # means the walk is before the business existed rather than in a quiet patch.

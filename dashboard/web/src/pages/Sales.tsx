@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { Freshness } from "../components/Freshness";
 import { RangeControls } from "../components/RangeControls";
 import { SavedViews } from "../components/SavedViews";
-import { int, money, shortDay } from "../lib/format";
+import { int, money, pct, shortDay } from "../lib/format";
 import { rangeFor } from "../lib/range";
 import type { Preset, Range } from "../lib/range";
 import type { Marketplace, SalesRow } from "../lib/types";
@@ -90,6 +90,13 @@ export default function Sales({ marketplace }: { marketplace: Marketplace }) {
   const peak = Math.max(1, ...byDay.map(([, u]) => u));
   const days = byDay.length;
 
+  // The archive starts where ingestion has reached, which early on is later
+  // than any range you can pick - so 7 days, 30 days and a custom range all
+  // return the same rows and look like a broken filter. Say so rather than
+  // leaving identical totals to be read as an error.
+  const firstHeld = byDay.length ? byDay[0]![0] : null;
+  const shortOfRange = firstHeld !== null && firstHeld > range.from;
+
   return (
     <>
       <Freshness marketplace={marketplace} sources={["sp-api-orders"]} />
@@ -106,6 +113,15 @@ export default function Sales({ marketplace }: { marketplace: Marketplace }) {
         current={{ preset, from: range.from, to: range.to }}
         onApply={apply}
       />
+
+      {shortOfRange && (
+        <div className="banner">
+          History currently starts {firstHeld}, so this range is answered from
+          {" "}{days} day{days === 1 ? "" : "s"} of data rather than the full
+          span you asked for. Earlier days are still being collected, a batch
+          per sync, until everything Amazon still holds is here.
+        </div>
+      )}
 
       {err && <div className="banner bad">Could not load sales: {err}</div>}
 
@@ -148,7 +164,7 @@ export default function Sales({ marketplace }: { marketplace: Marketplace }) {
             <thead>
               <tr>
                 <th>Product</th>
-                <th className="bar-col" style={{ textAlign: "left", width: "26%" }}>Share</th>
+                <th>Share</th>
                 <th>Units</th>
                 <th>Orders</th>
                 <th>Revenue</th>
@@ -161,11 +177,8 @@ export default function Sales({ marketplace }: { marketplace: Marketplace }) {
                     {p.name}
                     <small>{p.code ?? "Unattributed SKU"}</small>
                   </td>
-                  <td>
-                    <div className="bar">
-                      <span className="seg-a"
-                            style={{ width: `${(p.units / (totals.units || 1)) * 100}%` }} />
-                    </div>
+                  <td className="num">
+                    {pct((100 * p.units) / (totals.units || 1))}
                   </td>
                   <td className="num">{int(p.units)}</td>
                   <td className="num">{int(p.orders)}</td>
