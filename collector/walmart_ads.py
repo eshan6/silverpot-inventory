@@ -77,9 +77,18 @@ PROBES: tuple[tuple[str, str, str, str], ...] = (
     ("Marketplace: report type list", "GET",
      f"{WALMART_HOST}/v3/reports/reportRequests"
      "?reportType=NOT_A_REAL_REPORT_TYPE&reportVersion=v1", OAUTH),
-    ("Marketplace: advertising report", "GET",
-     f"{WALMART_HOST}/v3/reports/reportRequests"
-     "?reportType=ADVERTISING&reportVersion=v1", OAUTH),
+    # Report type names, because one guess was not a search. The reports API
+    # is the only marketplace surface that answered 200 and it is scoped Full
+    # Access on this key, so if any ad data is reachable without the Walmart
+    # Connect gateway, it is behind one of these names. A 400 means the name
+    # does not exist; anything else means it does.
+    *(("Marketplace: report " + name, "GET",
+       f"{WALMART_HOST}/v3/reports/reportRequests"
+       f"?reportType={name}&reportVersion=v1", OAUTH)
+      for name in ("ADVERTISING", "ADS", "AD_PERFORMANCE", "ADVERTISING_REPORT",
+                   "SPONSORED_PRODUCTS", "CAMPAIGN", "CAMPAIGN_PERFORMANCE",
+                   "AD_SPEND", "PROMO", "PROMOTION", "PERFORMANCE",
+                   "SALES_AND_TRAFFIC", "BUYBOX", "GROWTH")),
     ("Marketplace: item performance", "GET",
      f"{WALMART_HOST}/v3/reports/reportRequests"
      "?reportType=ITEM_PERFORMANCE&reportVersion=v1", OAUTH),
@@ -173,6 +182,23 @@ def _trim(text: str, limit: int = 400) -> str:
     return body[:limit] + ("..." if len(body) > limit else "")
 
 
+def shows_body_when_ok(url: str) -> bool:
+    """Print the body of a 200 from the reports API, not just its status.
+
+    A status code answers "may I", and for every other probe that is the whole
+    question. The reports API is different: it answered 200 on the first sweep
+    and the body was thrown away, when the body is the part that says which
+    reports exist. Asking a catalogue endpoint and discarding the catalogue is
+    not a probe, it is a formality.
+
+    Report-request metadata is job ids, types and dates. No order carries
+    through it, so nothing here can put a customer's name in a public log -
+    unlike the order reports, which is why this is scoped to /reports and not
+    turned on for everything.
+    """
+    return "/v3/reports" in (url or "")
+
+
 def _auth_headers(mode: str, token: str | None, private_key=None) -> dict | None:
     """Headers for one probe, or None if that mode is not available."""
     if mode == NONE:
@@ -228,7 +254,12 @@ def probe(token: str | None, sess=None, private_key=None,
                 params={"limit": 1} if url.endswith("inventory") else None,
                 timeout=net.TIMEOUT)
             record["status"] = resp.status_code
-            record["note"] = "" if resp.status_code == 200 else _trim(resp.text)
+            if resp.status_code != 200:
+                record["note"] = _trim(resp.text)
+            elif shows_body_when_ok(url):
+                record["note"] = _trim(resp.text, 900)
+            else:
+                record["note"] = ""
         except Exception as exc:                            # noqa: BLE001
             record["note"] = net.describe_error(exc)
         out.append(record)

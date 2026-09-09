@@ -175,6 +175,23 @@ class TestWhatCountsAsAdvertising(unittest.TestCase):
         self.assertIn("headers, not access", said)
 
 
+class TestBodiesInTheLog(unittest.TestCase):
+    """A catalogue endpoint's body is the answer; everything else's is risk."""
+
+    def test_the_reports_body_is_kept(self):
+        self.assertTrue(wa.shows_body_when_ok(
+            "https://marketplace.walmartapis.com/v3/reports/reportRequests"))
+
+    def test_no_other_endpoint_leaks_a_body_into_a_public_log(self):
+        # This repository's Actions logs are public and Walmart's order data
+        # carries buyer names and addresses. Only /v3/reports metadata is
+        # printed on success; anything else must stay a bare status code.
+        for url in ("https://marketplace.walmartapis.com/v3/wfs/inventory",
+                    "https://marketplace.walmartapis.com/v3/orders",
+                    f"{wa.WPA_HOST}/advertiser"):
+            self.assertFalse(wa.shows_body_when_ok(url), url)
+
+
 class TestProbes(unittest.TestCase):
     def test_the_control_is_one_of_the_probes(self):
         self.assertIn(CONTROL, [label for label, _m, _u, _a in wa.PROBES])
