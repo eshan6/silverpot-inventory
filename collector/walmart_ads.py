@@ -92,6 +92,19 @@ PROBES: tuple[tuple[str, str, str, str], ...] = (
      f"{WALMART_HOST}/v3/advertising/advertiser", OAUTH),
     ("Marketplace: ads", "GET", f"{WALMART_HOST}/v3/ads", OAUTH),
 
+    # --- The Growth scope, because the name is worth a live answer ---
+    # This account's key carries fourteen scopes and "Growth" is the only one
+    # whose name does not obviously exclude advertising. Walmart's docs put
+    # Listing Quality and Assortment under it, but the docs have been wrong
+    # about this account three times, so the account gets asked directly.
+    ("Marketplace: growth", "GET", f"{WALMART_HOST}/v3/growth", OAUTH),
+    ("Marketplace: growth opportunities", "GET",
+     f"{WALMART_HOST}/v3/growth/opportunities", OAUTH),
+    ("Marketplace: growth ads", "GET", f"{WALMART_HOST}/v3/growth/ads", OAUTH),
+    ("Marketplace: growth advertising", "GET",
+     f"{WALMART_HOST}/v3/growth/advertising", OAUTH),
+    ("Marketplace: insights", "GET", f"{WALMART_HOST}/v3/insights", OAUTH),
+
     # --- The advertising gateway, under the OAuth token it already refused ---
     ("WPA advertiser (oauth)", "GET", f"{WPA_HOST}/advertiser", OAUTH),
 
