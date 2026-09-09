@@ -49,6 +49,13 @@ TRAILING_DAYS = 3
 # that sleeps is a suite people stop running.
 PAGE_PAUSE_SECONDS = 1.0
 
+# How long to wait for the order quota to refill after a 429. Measured, not
+# guessed: a run on 2026-09-09 collected eight days in twenty-one seconds and
+# was then refused, and the session's own retry ladder (up to eight seconds)
+# was not enough to clear it. Amazon restores getOrders at about one call a
+# minute, so a minute is what a refused day is worth waiting.
+QUOTA_REFILL_SECONDS = 65
+
 
 def today_et() -> date:
     """Today's date in the seller's timezone.
@@ -238,6 +245,57 @@ def fetch_days(access_token: str, days: list[date], sess=None) -> list[dict]:
             items[order_id] = fetch_order_items(access_token, order_id, sess=sess)
 
     return aggregate_daily(orders, items)
+
+
+def is_throttled(exc: Exception) -> bool:
+    """Did Amazon refuse this because the quota is spent, rather than broken?
+
+    A 429 is not an error in the usual sense - nothing is wrong, the quota is
+    simply empty and will refill. Telling it apart from a real failure is what
+    lets the backfill wait instead of giving up, which is the difference
+    between collecting eight days a run and collecting as many as the hour
+    allows.
+    """
+    resp = getattr(exc, "response", None)
+    return resp is not None and getattr(resp, "status_code", None) == 429
+
+
+def fetch_patiently(access_token: str, days: list[date], sess=None,
+                    deadline: float | None = None,
+                    wait: int = QUOTA_REFILL_SECONDS,
+                    sleep=time.sleep, now=time.monotonic,
+                    log=print) -> tuple[list[dict], list[date]]:
+    """Fetch days newest-first, waiting out throttles. Returns (rows, done).
+
+    `done` is the days actually collected, which may be fewer than asked for.
+    Newest-first so that a short result is contiguous with the history already
+    held, leaving no hole in the middle for a cursor to skip past.
+
+    Waiting is bounded by `deadline` (a `time.monotonic` value). Anything that
+    is not a throttle stops the walk immediately: a quota refills, a broken
+    request does not.
+    """
+    rows: list[dict] = []
+    done: list[date] = []
+
+    for day in sorted(days, reverse=True):
+        while True:
+            try:
+                rows.extend(fetch_days(access_token, [day], sess=sess))
+                done.append(day)
+                break
+            except Exception as exc:  # noqa: BLE001
+                if not is_throttled(exc):
+                    log(f"  Stopped at {day}: {net.describe_error(exc)}")
+                    return rows, sorted(done)
+                if deadline is not None and now() + wait >= deadline:
+                    log(f"  Quota spent at {day}, and no time left to wait for "
+                        f"it - resuming here next run")
+                    return rows, sorted(done)
+                log(f"  Quota spent at {day}; waiting {wait}s for it to refill")
+                sleep(wait)
+
+    return rows, sorted(done)
 
 
 def trailing_days(today: date | None = None, count: int = TRAILING_DAYS) -> list[date]:

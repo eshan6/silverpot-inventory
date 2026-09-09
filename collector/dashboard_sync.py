@@ -64,6 +64,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=orders.TRAILING_DAYS,
                     help="how many days back to re-read, ending yesterday")
+    ap.add_argument("--backfill-minutes", type=int,
+                    default=backfill.BUDGET_SECONDS // 60,
+                    help="how long this run may spend extending the archive")
     ap.add_argument("--no-backfill", action="store_true",
                     help="only re-read the trailing window, do not extend "
                          "the archive further back")
@@ -132,7 +135,8 @@ def main() -> int:
     print(f"Wrote {written} row(s) to sales_daily")
 
     if not args.no_backfill:
-        extend_history(token, days[0], sku_map)
+        extend_history(token, days[0], sku_map,
+                       budget_seconds=args.backfill_minutes * 60)
     return 0
 
 
@@ -168,25 +172,16 @@ def extend_history(token: str, oldest_covered: date, sku_map,
                 return written
             print(backfill.describe(state, chunk))
 
-            # Newest day first, and one day at a time. getOrders allows a
-            # burst of calls and then throttles hard, so a chunk can be cut
-            # off partway; taking the days in this order means whatever was
-            # collected is contiguous with the history already held, and the
-            # cursor can move to cover exactly that. Fetching the chunk in one
-            # call instead would discard a throttled chunk entirely and retry
-            # the same days on the next run, forever.
-            rows: list[dict] = []
-            completed: list[date] = []
-            stopped = False
-            for day in reversed(chunk):
-                try:
-                    rows.extend(orders.fetch_days(token, [day]))
-                except Exception as exc:  # noqa: BLE001
-                    print(f"  Backfill stopped at {day}: "
-                          f"{net.describe_error(exc)} - resuming here next run")
-                    stopped = True
-                    break
-                completed.append(day)
+            # Newest day first, one day at a time, waiting out the quota
+            # rather than giving up on it. A 429 is not a failure - the quota
+            # is spent and refills at about a call a minute - and treating it
+            # as one is the difference between eight days a run and as many as
+            # the budget allows. Whatever is collected stays contiguous with
+            # the history above it, so the cursor can move to cover exactly
+            # that.
+            rows, completed = orders.fetch_patiently(
+                token, chunk, deadline=started + budget_seconds)
+            stopped = len(completed) < len(chunk)
 
             if not completed:
                 return written

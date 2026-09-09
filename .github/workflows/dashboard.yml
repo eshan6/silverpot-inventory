@@ -22,6 +22,10 @@ on:
         description: "Days back to re-read, ending yesterday (default 3)"
         type: string
         default: ""
+      backfill_minutes:
+        description: "Minutes this run may spend filling history (default 25)"
+        type: string
+        default: ""
       dry_run:
         description: "Fetch and print, write nothing"
         type: boolean
@@ -67,6 +71,9 @@ jobs:
           ARGS=""
           if [ -n "${{ inputs.days }}" ]; then
             ARGS="$ARGS --days ${{ inputs.days }}"
+          fi
+          if [ -n "${{ inputs.backfill_minutes }}" ]; then
+            ARGS="$ARGS --backfill-minutes ${{ inputs.backfill_minutes }}"
           fi
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
