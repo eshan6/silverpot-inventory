@@ -1,83 +1,100 @@
-/* Same visual language as the inventory dashboard in public/index.html:
-   editorial, monospace numerals, navy and teal, uppercase micro-labels. The
-   tokens are copied rather than imported because that page is a standalone
-   static file with no build step; if they ever diverge, that page is the
-   original and this should follow it. */
+/* Same visual language as the silverpottea.com admin: Inter, a warm paper
+   ground, soft rules and olive as the only real colour. The earlier scheme
+   set every number in a monospace face, which read as a terminal rather than
+   as a place of business.
+
+   Numbers still need to line up in a column, so the alignment that face was
+   there for now comes from Inter's tabular figures instead - `tnum` is a real
+   feature of the font, not a fallback, so the columns hold without the
+   typewriter look. */
 
 :root {
-  --ink: #12212f;
-  --navy: #1f4e79;
-  --teal: #0f6e56;
-  --paper: #fbfbf9;
-  --rule: #dfe3e6;
-  --dim: #7a828a;
-  --alert: #a32d2d;
+  --ink: #1b1a17;
+  --brand: #8a7a4e;          /* the wordmark olive */
+  --brand-deep: #6f6139;     /* hover and active states */
+  --teal: #2f6b4f;
+  --paper: #f7f3ec;          /* page ground */
+  --card: #fffdf9;           /* anything sitting on the ground */
+  --rule: #e7dfd2;
+  --dim: #6e6a61;
+  --alert: #a33a3a;
+  --alert-wash: #f6e7e4;
   --warn: #8a5a0b;
-  --wash: #edeff1;
-  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  --warn-wash: #f7eedd;
+  --wash: #efe9df;
+  --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: var(--sans);
+  font-size: 14px;
   background: var(--paper);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum" 1, "cv05" 1;
 }
 
-a { color: var(--navy); }
+a { color: var(--brand-deep); }
 
 .wrap { max-width: 1120px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
 
 /* ---------------------------------------------------------------- header */
 
-.masthead { border-bottom: 2px solid var(--navy); padding-bottom: 0.9rem; margin-bottom: 1.25rem; }
+.masthead { border-bottom: 1px solid var(--rule); padding-bottom: 0.9rem; margin-bottom: 1.5rem; }
 .masthead-top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-.masthead h1 { font-size: 1.05rem; font-weight: 620; letter-spacing: -0.01em; color: var(--navy); }
-.who { font-family: var(--mono); font-size: 0.66rem; color: var(--dim); }
+.masthead h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+.who { font-size: 0.78rem; color: var(--dim); }
 .who button {
-  font: inherit; background: none; border: none; color: var(--navy);
+  font: inherit; background: none; border: none; color: var(--brand);
   cursor: pointer; padding: 0; margin-left: 0.6rem; text-decoration: underline;
 }
 
 nav { display: flex; gap: 1.25rem; margin-top: 0.85rem; align-items: center; flex-wrap: wrap; }
 nav a {
-  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
-  font-weight: 600; color: var(--dim); text-decoration: none;
-  padding-bottom: 0.3rem; border-bottom: 2px solid transparent;
+  font-size: 0.86rem; font-weight: 500; color: var(--dim); text-decoration: none;
+  padding-bottom: 0.45rem; border-bottom: 2px solid transparent;
 }
-nav a.on { color: var(--navy); border-bottom-color: var(--navy); }
+nav a:hover { color: var(--ink); }
+nav a.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--brand); }
 
 /* The marketplace switcher. Amazon and Walmart are never shown together, by
    design: one is selected, always, and there is no "both". */
-.markets { margin-left: auto; display: flex; border: 1px solid var(--rule); }
+.markets { margin-left: auto; display: flex; border: 1px solid var(--rule);
+  border-radius: 8px; overflow: hidden; background: var(--card); }
 .markets button {
-  font-family: var(--mono); font-size: 0.64rem; text-transform: uppercase;
-  letter-spacing: 0.06em; padding: 0.3rem 0.7rem; background: none;
+  font: inherit; font-size: 0.78rem; font-weight: 500;
+  padding: 0.35rem 0.85rem; background: none;
   border: none; cursor: pointer; color: var(--dim);
 }
-.markets button.on { background: var(--navy); color: #fff; }
+.markets button.on { background: var(--brand); color: #fff; }
 .markets button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ---------------------------------------------------------------- status */
 
-.stamp { font-family: var(--mono); font-size: 0.66rem; color: var(--dim); }
+.stamp { font-size: 0.66rem; color: var(--dim); }
 
 .banner {
-  font-family: var(--mono); font-size: 0.68rem; padding: 0.55rem 0.7rem;
-  margin-bottom: 1.25rem; border-left: 3px solid var(--dim); background: var(--wash);
+  font-size: 0.82rem; padding: 0.7rem 0.9rem; border-radius: 8px;
+  margin-bottom: 1.25rem; border: 1px solid var(--rule);
+  border-left: 3px solid var(--dim); background: var(--card); color: var(--dim);
 }
-.banner.stale { border-left-color: var(--warn); color: var(--warn); }
-.banner.bad { border-left-color: var(--alert); color: var(--alert); }
+.banner.stale {
+  border-left-color: var(--warn); border-color: var(--warn-wash);
+  background: var(--warn-wash); color: var(--warn);
+}
+.banner.bad {
+  border-left-color: var(--alert); border-color: var(--alert-wash);
+  background: var(--alert-wash); color: var(--alert);
+}
 
 /* ---------------------------------------------------------------- stats */
 
 .totals { display: flex; gap: 2.5rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
-.stat .n { font-family: var(--mono); font-size: 1.5rem; font-weight: 600; letter-spacing: -0.03em; }
-.stat .l { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--dim); margin-top: 0.15rem; }
-.stat .d { font-family: var(--mono); font-size: 0.64rem; color: var(--dim); margin-top: 0.2rem; }
+.stat .n { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.035em; }
+.stat .l { font-size: 0.74rem; font-weight: 500; color: var(--dim); margin-top: 0.2rem; }
+.stat .d { font-size: 0.72rem; color: var(--dim); opacity: 0.85; margin-top: 0.25rem; }
 .stat.risk .n { color: var(--alert); }
 .stat.good .n { color: var(--teal); }
 /* A metric with no answer prints as a dash, never as zero: dividing by no
@@ -91,95 +108,116 @@ nav a.on { color: var(--navy); border-bottom-color: var(--navy); }
   margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--rule);
 }
 .field { display: flex; flex-direction: column; gap: 0.25rem; }
-.field label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+.field label { font-size: 0.74rem; font-weight: 500; color: var(--dim); }
 .field input, .field select {
-  font-family: var(--mono); font-size: 0.72rem; padding: 0.3rem 0.4rem;
-  border: 1px solid var(--rule); background: #fff; color: var(--ink);
+  font: inherit; font-size: 0.84rem; padding: 0.4rem 0.55rem; border-radius: 8px;
+  border: 1px solid var(--rule); background: var(--card); color: var(--ink);
+}
+.field input:focus, .field select:focus, .views-save input:focus {
+  outline: none; border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(138, 122, 78, 0.14);
 }
 .presets { display: flex; gap: 0.4rem; }
 .presets button {
-  font-family: var(--mono); font-size: 0.64rem; padding: 0.3rem 0.55rem;
-  border: 1px solid var(--rule); background: #fff; cursor: pointer; color: var(--dim);
+  font: inherit; font-size: 0.82rem; padding: 0.4rem 0.75rem; border-radius: 8px;
+  border: 1px solid var(--rule); background: var(--card); cursor: pointer;
+  color: var(--dim);
 }
-.presets button.on { border-color: var(--navy); color: var(--navy); }
+.presets button:hover { color: var(--ink); }
+.presets button.on {
+  border-color: var(--brand); color: var(--brand-deep); font-weight: 600;
+  background: rgba(138, 122, 78, 0.08);
+}
 
 .btn {
-  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em;
-  font-weight: 600; padding: 0.4rem 0.8rem; border: 1px solid var(--navy);
-  background: var(--navy); color: #fff; cursor: pointer;
+  font: inherit; font-size: 0.82rem; font-weight: 600; border-radius: 8px;
+  padding: 0.45rem 0.9rem; border: 1px solid var(--brand);
+  background: var(--brand); color: #fff; cursor: pointer;
 }
-.btn.ghost { background: none; color: var(--navy); }
+.btn:hover:not(:disabled) { background: var(--brand-deep); border-color: var(--brand-deep); }
+.btn.ghost { background: var(--card); color: var(--brand-deep); border-color: var(--rule); }
+.btn.ghost:hover:not(:disabled) { background: var(--wash); border-color: var(--brand); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ---------------------------------------------------------------- tables */
 
-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+table {
+  width: 100%; border-collapse: collapse; font-size: 0.84rem;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+  overflow: hidden;
+}
 th {
-  text-align: right; padding: 0.4rem 0.5rem; font-size: 0.6rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.07em; color: var(--dim);
-  border-bottom: 1px solid var(--rule); white-space: nowrap;
+  text-align: right; padding: 0.7rem 0.8rem; font-size: 0.78rem; font-weight: 600;
+  color: var(--dim); border-bottom: 1px solid var(--rule); white-space: nowrap;
 }
 th:first-child, td:first-child { text-align: left; }
 th.sortable { cursor: pointer; user-select: none; }
-th.sortable:hover { color: var(--navy); }
-td { padding: 0.5rem; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; text-align: right; }
-td.num { font-family: var(--mono); }
+th.sortable:hover { color: var(--brand-deep); }
+td {
+  padding: 0.7rem 0.8rem; border-bottom: 1px solid var(--rule);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:nth-child(even) { background: rgba(138, 122, 78, 0.035); }
 td.name { font-weight: 500; }
-td.name small { display: block; font-family: var(--mono); font-size: 0.62rem; color: var(--dim); font-weight: 400; }
-tbody tr:hover { background: rgba(31, 78, 121, 0.035); }
+td.name small { display: block; font-size: 0.74rem; color: var(--dim); font-weight: 400; margin-top: 0.15rem; }
+tbody tr:hover { background: rgba(138, 122, 78, 0.07); }
 
 td.left { text-align: left; }
-td.mono { font-family: var(--mono); font-size: 0.68rem; color: var(--dim); }
+td.mono { font-size: 0.78rem; color: var(--dim); }
 /* A number past its target is coloured, never hidden or rounded away. */
 td.num.over { color: var(--alert); }
 
-.bar { display: flex; height: 15px; background: var(--wash); width: 100%; min-width: 120px; }
+.bar { display: flex; height: 8px; border-radius: 999px; background: var(--wash);
+  width: 100%; min-width: 120px; overflow: hidden; }
 .bar span { display: block; }
-.seg-a { background: var(--navy); }
+.seg-a { background: var(--brand); }
 .seg-b { background: var(--teal); }
 .seg-over { background: var(--alert); }
 
 /* --------------------------------------------------------------- sections */
 
 .section-head {
-  font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.09em;
-  color: var(--dim); margin: 2rem 0 0.6rem; display: flex; gap: 0.75rem;
-  align-items: center;
+  font-size: 0.95rem; font-weight: 600; color: var(--ink);
+  margin: 2.25rem 0 0.75rem; display: flex; gap: 0.75rem; align-items: center;
 }
 .head-extra {
-  display: flex; gap: 0.35rem; align-items: center; text-transform: none;
-  letter-spacing: 0;
+  display: flex; gap: 0.4rem; align-items: center;
+  font-size: 0.8rem; font-weight: 400; color: var(--dim);
 }
-.head-extra select { font-size: 0.66rem; padding: 0.1rem 0.25rem; }
+.head-extra select {
+  font: inherit; padding: 0.2rem 0.4rem; border-radius: 6px;
+  border: 1px solid var(--rule); background: var(--card); color: var(--ink);
+}
 
 .footnote {
-  font-family: var(--mono); font-size: 0.64rem; color: var(--dim);
-  line-height: 1.6; margin-top: 0.7rem; max-width: 46rem;
+  font-size: 0.8rem; color: var(--dim);
+  line-height: 1.6; margin-top: 0.8rem; max-width: 48rem;
 }
 
 /* ----------------------------------------------------------- saved views */
 
 .views {
   display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
-  margin: -0.4rem 0 1.5rem; font-size: 0.68rem;
+  margin: -0.4rem 0 1.75rem; font-size: 0.82rem;
 }
-.views-label {
-  font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--dim);
+.views-label { font-size: 0.78rem; font-weight: 500; color: var(--dim); }
+.views-none { font-size: 0.8rem; color: var(--dim); }
+.views-err { font-size: 0.8rem; color: var(--alert); }
+.chip {
+  display: inline-flex; border: 1px solid var(--rule); border-radius: 999px;
+  overflow: hidden; background: var(--card);
 }
-.views-none { font-family: var(--mono); font-size: 0.64rem; color: var(--dim); }
-.views-err { font-family: var(--mono); font-size: 0.64rem; color: var(--alert); }
-.chip { display: inline-flex; border: 1px solid var(--rule); }
 .chip button {
   background: none; border: 0; cursor: pointer; font: inherit;
-  color: var(--navy); padding: 0.15rem 0.45rem;
+  color: var(--brand-deep); padding: 0.25rem 0.7rem;
 }
-.chip button.x { color: var(--dim); border-left: 1px solid var(--rule); }
+.chip button.x { color: var(--dim); border-left: 1px solid var(--rule); padding: 0.25rem 0.55rem; }
 .chip button.x:hover { color: var(--alert); }
 .views-save { display: flex; align-items: center; gap: 0.4rem; margin-left: auto; }
 .views-save input[type="text"], .views-save input:not([type]) {
-  font: inherit; padding: 0.2rem 0.4rem; border: 1px solid var(--rule);
-  background: #fff; min-width: 12rem;
+  font: inherit; padding: 0.35rem 0.6rem; border-radius: 8px;
+  border: 1px solid var(--rule); background: var(--card); min-width: 13rem;
 }
 .views-save label {
   display: flex; align-items: center; gap: 0.2rem; color: var(--dim);
@@ -189,25 +227,30 @@ td.num.over { color: var(--alert); }
 /* ---------------------------------------------------------------- states */
 
 .empty, .loading {
-  font-family: var(--mono); font-size: 0.72rem; color: var(--dim);
-  padding: 2.5rem 0; text-align: center;
+  font-size: 0.86rem; color: var(--dim); line-height: 1.6;
+  padding: 2.5rem 1.5rem; text-align: center; background: var(--card);
+  border: 1px solid var(--rule); border-radius: 10px;
 }
-.empty strong { display: block; color: var(--ink); margin-bottom: 0.3rem; font-weight: 600; }
+.empty strong { display: block; color: var(--ink); margin-bottom: 0.4rem; font-weight: 600; font-size: 0.95rem; }
 
 /* ---------------------------------------------------------------- login */
 
-.login { max-width: 340px; margin: 12vh auto; padding: 0 1.5rem; }
-.login h1 { font-size: 1.05rem; font-weight: 620; color: var(--navy); margin-bottom: 0.4rem; }
-.login p { font-size: 0.74rem; color: var(--dim); margin-bottom: 1.5rem; line-height: 1.5; }
+.login {
+  max-width: 380px; margin: 12vh auto; padding: 2rem;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 12px;
+}
+.login h1 { font-size: 1.3rem; font-weight: 700; color: var(--ink); margin-bottom: 0.4rem; }
+.login p { font-size: 0.88rem; color: var(--dim); margin-bottom: 1.5rem; line-height: 1.55; }
 .login .field { margin-bottom: 0.9rem; }
 .login .field input { width: 100%; }
 .login .btn { width: 100%; padding: 0.55rem; }
 .login .err {
-  font-family: var(--mono); font-size: 0.68rem; color: var(--alert);
-  margin-bottom: 0.9rem; line-height: 1.4;
+  font-size: 0.82rem; color: var(--alert); background: var(--alert-wash);
+  border: 1px solid var(--alert-wash); border-radius: 8px; padding: 0.6rem 0.75rem;
+  margin-bottom: 0.9rem; line-height: 1.45;
 }
-.login .note { font-family: var(--mono); font-size: 0.64rem; color: var(--dim); margin-top: 1rem; line-height: 1.5; }
+.login .note { font-size: 0.8rem; color: var(--dim); margin-top: 1rem; line-height: 1.55; }
 .linkish {
   background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
-  color: var(--navy); text-decoration: underline;
+  color: var(--brand); text-decoration: underline;
 }

@@ -1,7 +1,13 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useSession } from "../lib/session";
 import { isStaff } from "../lib/types";
-import type { Marketplace } from "../lib/types";
+import type { Marketplace, Role } from "../lib/types";
+
+const ROLE_WORD: Record<Role, string> = {
+  viewer: "Viewer",
+  admin: "Admin",
+  super_admin: "Super admin",
+};
 
 /**
  * Header, navigation and the marketplace switcher.
@@ -29,7 +35,7 @@ export function Shell({
           <h1>Silverpot — Marketplace Dashboard</h1>
           <div className="who">
             {profile?.email}
-            {profile && profile.role !== "viewer" ? ` · ${profile.role.replace("_", " ")}` : ""}
+            {profile && profile.role !== "viewer" ? ` · ${ROLE_WORD[profile.role]}` : ""}
             <button onClick={signOut}>Sign out</button>
           </div>
         </div>

@@ -163,7 +163,7 @@ export default function Spend({ marketplace }: { marketplace: Marketplace }) {
               </div>
               <div className="l">Ad spend per unit sold</div>
               <div className="d">
-                target {ratio(target)} · {over ? "over" : "within"}
+                Target {ratio(target)} · {over ? "Over" : "Within"}
               </div>
             </div>
             <div className="stat">
@@ -174,12 +174,12 @@ export default function Spend({ marketplace }: { marketplace: Marketplace }) {
             <div className="stat">
               <div className="n">{int(totals.units)}</div>
               <div className="l">Total units sold</div>
-              <div className="d">all orders, not just attributed</div>
+              <div className="d">All orders, not just attributed</div>
             </div>
             <div className="stat">
               <div className="n">{pct(totals.pctOfRevenue)}</div>
               <div className="l">Ad spend as % of revenue</div>
-              <div className="d">on {money(totals.revenue)}</div>
+              <div className="d">On {money(totals.revenue)}</div>
             </div>
             <div className="stat">
               <div className={`n${totals.costPerAttributedUnit === null ? " none" : ""}`}>

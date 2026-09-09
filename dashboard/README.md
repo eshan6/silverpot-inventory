@@ -148,6 +148,42 @@ sync* and *Ads sync* workflows by hand from the Actions tab. Ads accepts a
 right first run — it confirms the column names against reality rather than
 assuming them.
 
+## How far back the numbers go
+
+Both sync jobs do two things on every run. They re-read a trailing window,
+because orders cancel and advertising attribution keeps restating recent days.
+Then they reach one chunk further into the past, so the archive grows on its
+own until it holds everything Amazon still has.
+
+That is a walk rather than one big fetch because `getOrders` allows a burst of
+about twenty calls and then roughly one a minute, and this pipeline spends one
+call per day of history. "Fetch two years every morning" is a twelve-hour run
+that fails; it is also pointless, since a settled day never changes. History
+gets collected once and only the recent days get re-read.
+
+Sales walk back 15 days per run, twice a day, to a ceiling of two years.
+Advertising walks 30 days per run to a much shorter ceiling, because Amazon
+retains far less advertising history than order history. Both stop early — and
+permanently — after about three months of consecutive days with nothing in
+them, which means the walk has gone back past the first sale.
+
+Three properties worth knowing, because each is a way this could have gone
+quietly wrong:
+
+- **Progress is a cursor over days attempted, not a query for the oldest row.**
+  Keyed off the oldest row present, one month with no sales would write no
+  rows, leave the oldest row where it was, and refetch that same month every
+  twelve hours forever, with no error and no growth.
+- **A throttled chunk still counts.** Days are taken newest-first within a
+  chunk, so a chunk cut short by rate limiting is contiguous with the history
+  above it and the cursor moves to exactly what was collected. The days it
+  missed are the next ones fetched.
+- **The backfill can never break the daily numbers.** It runs after the day's
+  figures are written and the run is recorded, and every failure in it is
+  caught and reported rather than failing the job.
+
+`--no-backfill` on either command re-reads the trailing window only.
+
 ## Adding people
 
 An admin records an invite (Admin → Invite someone); the invited person signs

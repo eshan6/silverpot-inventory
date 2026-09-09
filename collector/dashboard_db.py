@@ -91,6 +91,43 @@ def upsert(table: str, rows: list[dict], sess=None) -> int:
     return sent
 
 
+def get_setting(key: str, sess=None):
+    """One row out of app_settings, or None.
+
+    Used to remember how far the history walk has got. Like the run ledger,
+    this is bookkeeping: if it cannot be read, the run still has real work to
+    do, so the caller gets None and starts the walk over rather than failing.
+    Re-walking costs repeated upserts of rows that are already correct.
+    """
+    sess = sess or net.session()
+    try:
+        resp = sess.get(f"{_base()}/rest/v1/app_settings",
+                        headers=_headers(),
+                        params={"select": "value", "key": f"eq.{key}"},
+                        timeout=net.TIMEOUT)
+        _check(resp, f"read app_settings/{key}")
+        body = resp.json() or []
+        return body[0]["value"] if body else None
+    except NotSupabase:
+        raise
+    except Exception as exc:  # noqa: BLE001 - see docstring
+        print(f"  NOTE could not read setting {key}: {net.describe_error(exc)}")
+        return None
+
+
+def set_setting(key: str, value, sess=None) -> None:
+    """Record a setting. Never fails the run."""
+    sess = sess or net.session()
+    try:
+        resp = sess.post(f"{_base()}/rest/v1/app_settings",
+                         headers=_headers(upsert=True),
+                         json=[{"key": key, "value": value}],
+                         timeout=net.TIMEOUT)
+        _check(resp, f"write app_settings/{key}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  NOTE could not save setting {key}: {net.describe_error(exc)}")
+
+
 def start_run(marketplace: str, source: str, covers_from, covers_to,
               sess=None) -> int | None:
     """Record that ingestion began. Returns the run id, or None if unrecorded.

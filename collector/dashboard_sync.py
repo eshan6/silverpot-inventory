@@ -1,12 +1,22 @@
 """Daily dashboard ingestion.
 
-    python -m collector.dashboard_sync              # trailing window
-    python -m collector.dashboard_sync --days 30    # backfill
+    python -m collector.dashboard_sync              # trailing window + one chunk
+    python -m collector.dashboard_sync --days 30    # a bigger trailing window
+    python -m collector.dashboard_sync --no-backfill
     python -m collector.dashboard_sync --dry-run    # compute, write nothing
 
 Separate from `collector.main`, which keeps the storefront's stock numbers
 current. That job must not start failing because a dashboard is misconfigured,
 and this one must not be skipped because inventory had a bad morning.
+
+Each run does two jobs. The trailing window re-reads the last few days, because
+orders cancel and Pending prices land late. The backfill then reaches one chunk
+further into the past, so the archive grows on its own until it holds
+everything Amazon still has - see `backfill.py` for why that is a walk rather
+than one enormous fetch.
+
+The second job can never break the first. A backfill chunk that fails is
+reported and skipped; the day's real numbers are already written by then.
 """
 from __future__ import annotations
 
@@ -14,10 +24,11 @@ import argparse
 import sys
 from datetime import date, timedelta
 
-from . import amazon, dashboard_db, net, orders
+from . import amazon, backfill, dashboard_db, net, orders
 from .config import load_sku_map
 
 SOURCE = "sp-api-orders"
+BACKFILL_SETTING = "sales_backfill"
 
 
 def attach_internal_codes(rows: list[dict], sku_map) -> tuple[list[dict], list[str]]:
@@ -52,6 +63,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=orders.TRAILING_DAYS,
                     help="how many days back to re-read, ending yesterday")
+    ap.add_argument("--no-backfill", action="store_true",
+                    help="only re-read the trailing window, do not extend "
+                         "the archive further back")
     ap.add_argument("--dry-run", action="store_true",
                     help="fetch and compute, write nothing")
     args = ap.parse_args()
@@ -86,7 +100,8 @@ def main() -> int:
         dashboard_db.finish_run(run_id, "failed", error=net.describe_error(exc))
         return 1
 
-    rows, unknown = attach_internal_codes(rows, load_sku_map())
+    sku_map = load_sku_map()
+    rows, unknown = attach_internal_codes(rows, sku_map)
 
     units = sum(r["units"] for r in rows)
     revenue = round(sum(r["revenue"] for r in rows), 2)
@@ -114,7 +129,75 @@ def main() -> int:
 
     dashboard_db.finish_run(run_id, "ok", rows_written=written)
     print(f"Wrote {written} row(s) to sales_daily")
+
+    if not args.no_backfill:
+        extend_history(token, days[0], sku_map)
     return 0
+
+
+def extend_history(token: str, oldest_covered: date, sku_map) -> int:
+    """Reach one chunk further back, and remember how far we got.
+
+    Deliberately total: every failure here is caught and reported. This runs
+    after the day's real numbers are already written and the run is already
+    recorded as ok, so an archive chunk that cannot be fetched is a smaller
+    problem than a red run that makes today's figures look untrustworthy.
+    """
+    try:
+        state = backfill.State.from_settings(
+            dashboard_db.get_setting(BACKFILL_SETTING))
+        chunk = backfill.next_chunk(state, start_from=oldest_covered,
+                                    today=orders.today_et())
+        print(backfill.describe(state, chunk))
+        if not chunk:
+            if not state.done:
+                dashboard_db.set_setting(
+                    BACKFILL_SETTING,
+                    backfill.advance(state, chunk, 0).as_settings())
+            return 0
+
+        # Newest day first, and one day at a time. getOrders allows a burst of
+        # about twenty calls and then roughly one a minute, so a chunk can be
+        # throttled off partway through; taking the days in this order means
+        # whatever was collected is contiguous with the history already held,
+        # and the cursor can move to cover exactly that. Fetching the chunk in
+        # one call instead would throw away a throttled chunk entirely and
+        # retry the same days on the next run, forever.
+        rows: list[dict] = []
+        completed: list[date] = []
+        for day in reversed(chunk):
+            try:
+                rows.extend(orders.fetch_days(token, [day]))
+            except Exception as exc:  # noqa: BLE001
+                print(f"  Backfill stopped at {day}: {net.describe_error(exc)} "
+                      f"- resuming here next run")
+                break
+            completed.append(day)
+
+        if not completed:
+            return 0
+
+        rows, unknown = attach_internal_codes(rows, sku_map)
+        written = dashboard_db.upsert("sales_daily", rows)
+
+        units = sum(r["units"] for r in rows)
+        completed.sort()
+        print(f"Backfill: {written} row(s), {units} units for "
+              f"{completed[0]}..{completed[-1]}")
+        if unknown:
+            print(f"  WARN unmapped SKU(s) in history: "
+                  f"{', '.join(sorted(unknown))}", file=sys.stderr)
+
+        after = backfill.advance(state, completed, len(rows),
+                                 today=orders.today_et())
+        dashboard_db.set_setting(BACKFILL_SETTING, after.as_settings())
+        if after.done:
+            print(f"Backfill: finished - history now reaches {after.cursor}")
+        return written
+    except Exception as exc:  # noqa: BLE001 - see docstring
+        print(f"Backfill skipped this run: {net.describe_error(exc)}",
+              file=sys.stderr)
+        return 0
 
 
 if __name__ == "__main__":
