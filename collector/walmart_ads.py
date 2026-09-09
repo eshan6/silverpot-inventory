@@ -222,6 +222,19 @@ def probe(token: str | None, sess=None, private_key=None,
     return out
 
 
+def is_advertising(record: dict) -> bool:
+    """Is this probe actually asking about advertising?
+
+    Derived from the URL rather than a hand-kept list, so a probe added later
+    is classified by where it points instead of by whether someone remembered
+    to register it.
+    """
+    url = (record.get("url") or "").lower()
+    if url.startswith(WPA_HOST.lower()):
+        return True
+    return any(mark in url for mark in ("/sem", "advertis", "/ads"))
+
+
 def verdict(results: list[dict]) -> list[str]:
     """Read the sweep. The control is judged first and on its own.
 
@@ -235,8 +248,16 @@ def verdict(results: list[dict]) -> list[str]:
     control = by.get(CONTROL, {}).get("status")
     signed_control = by.get(SIGNED_CONTROL, {})
     controls = {CONTROL, SIGNED_CONTROL}
+    # Only advertising probes can answer the advertising question. The sweep
+    # also asks endpoints that are merely nearby - the reports API, item
+    # performance - and on 2026-09-09 two of those answered 200 and this
+    # function announced "there is a route". They are marketplace endpoints
+    # carrying no ad spend, and reporting them as a route to advertising was
+    # exactly the sort of cheerful wrong answer the rest of this module is
+    # built to avoid.
     ads = [r for r in results
-           if r["label"] not in controls and not r.get("skipped")]
+           if r["label"] not in controls and not r.get("skipped")
+           and is_advertising(r)]
     skipped = [r for r in results if r.get("skipped")]
 
     if control != 200:

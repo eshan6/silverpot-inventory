@@ -22,8 +22,11 @@ GATEWAY = ('{"details":{"Description":"Request is missing required security '
            'headers, please read documentation for security headers"}}')
 
 
-def rec(label, status=404, note="", mode=wa.OAUTH, skipped=False):
-    r = {"label": label, "mode": mode, "url": "https://example.invalid",
+def rec(label, status=404, note="", mode=wa.OAUTH, skipped=False, url=None):
+    # Default to an advertising URL: most records in these tests stand for
+    # advertising probes, and the verdict now ignores anything else.
+    r = {"label": label, "mode": mode,
+         "url": url or f"{wa.WPA_HOST}/advertiser",
          "status": status, "note": note}
     if skipped:
         r["skipped"] = True
@@ -135,6 +138,41 @@ class TestVerdict(unittest.TestCase):
         said = " ".join(wa.verdict(results(200, rec("Marketplace: ads", 404))))
         self.assertIn("not a real path", said)
         self.assertIn("says nothing", said)
+
+
+class TestWhatCountsAsAdvertising(unittest.TestCase):
+    """The sweep asks nearby endpoints too. Only ad ones answer the question."""
+
+    def test_a_marketplace_report_endpoint_is_not_advertising(self):
+        # This is the live case that broke it. On 2026-09-09 the reports API
+        # and item performance both answered 200, and the verdict announced
+        # "there is a route" - to endpoints carrying no ad spend at all.
+        for url in (
+            "https://marketplace.walmartapis.com/v3/reports/reportRequests",
+            "https://marketplace.walmartapis.com/v3/reports/reportRequests"
+            "?reportType=ITEM_PERFORMANCE&reportVersion=v1",
+            "https://marketplace.walmartapis.com/v3/wfs/inventory",
+        ):
+            self.assertFalse(wa.is_advertising({"url": url}), url)
+
+    def test_the_advertising_gateway_and_the_ad_paths_are(self):
+        for url in (f"{wa.WPA_HOST}/advertiser",
+                    f"{wa.WPA_HOST}/snapshot/report",
+                    "https://marketplace.walmartapis.com/v3/sem/campaigns",
+                    "https://marketplace.walmartapis.com/v3/advertising",
+                    "https://marketplace.walmartapis.com/v3/ads"):
+            self.assertTrue(wa.is_advertising({"url": url}), url)
+
+    def test_a_reports_200_is_not_reported_as_an_advertising_route(self):
+        said = " ".join(wa.verdict([
+            rec(CONTROL, 200, url="https://marketplace.walmartapis.com/v3/wfs/inventory"),
+            rec(wa.SIGNED_CONTROL, skipped=True, mode=wa.SIGNED),
+            rec("Marketplace: report requests", 200,
+                url="https://marketplace.walmartapis.com/v3/reports/reportRequests"),
+            rec("WPA advertiser (oauth)", 403, GATEWAY),
+        ]))
+        self.assertNotIn("there is a route", said)
+        self.assertIn("headers, not access", said)
 
 
 class TestProbes(unittest.TestCase):
