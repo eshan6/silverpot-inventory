@@ -22,6 +22,11 @@ on:
         description: "Last day to collect (default: just before the daily window)"
         type: string
         default: ""
+      marketplace:
+        description: "Which marketplace to backfill"
+        type: choice
+        options: ["amazon", "walmart"]
+        default: "amazon"
       probe:
         description: "Print the report's column names only, write nothing"
         type: boolean
@@ -57,6 +62,8 @@ jobs:
           LWA_CLIENT_ID: ${{ secrets.LWA_CLIENT_ID }}
           LWA_CLIENT_SECRET: ${{ secrets.LWA_CLIENT_SECRET }}
           LWA_REFRESH_TOKEN: ${{ secrets.LWA_REFRESH_TOKEN }}
+          WALMART_CLIENT_ID: ${{ secrets.WALMART_CLIENT_ID }}
+          WALMART_CLIENT_SECRET: ${{ secrets.WALMART_CLIENT_SECRET }}
           FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
           DASHBOARD_SUPABASE_URL: ${{ secrets.DASHBOARD_SUPABASE_URL }}
           DASHBOARD_SUPABASE_SERVICE_KEY: ${{ secrets.DASHBOARD_SUPABASE_SERVICE_KEY }}
@@ -74,4 +81,8 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi
-          python -m collector.orders_report $ARGS
+          if [ "${{ inputs.marketplace }}" = "walmart" ]; then
+            python -m collector.walmart_orders $ARGS
+          else
+            python -m collector.orders_report $ARGS
+          fi

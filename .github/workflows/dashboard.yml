@@ -79,3 +79,25 @@ jobs:
             ARGS="$ARGS --dry-run"
           fi
           python -m collector.dashboard_sync $ARGS
+
+      # A separate step, and never a reason for the Amazon numbers to be
+      # missing: `continue-on-error` means a Walmart outage leaves the run
+      # amber rather than losing the day's Amazon sales, which are already
+      # written by the time this runs.
+      - name: Pull Walmart sales into the dashboard
+        continue-on-error: true
+        env:
+          WALMART_CLIENT_ID: ${{ secrets.WALMART_CLIENT_ID }}
+          WALMART_CLIENT_SECRET: ${{ secrets.WALMART_CLIENT_SECRET }}
+          FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
+          DASHBOARD_SUPABASE_URL: ${{ secrets.DASHBOARD_SUPABASE_URL }}
+          DASHBOARD_SUPABASE_SERVICE_KEY: ${{ secrets.DASHBOARD_SUPABASE_SERVICE_KEY }}
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.days }}" ]; then
+            ARGS="$ARGS --days ${{ inputs.days }}"
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python -m collector.walmart_orders $ARGS
