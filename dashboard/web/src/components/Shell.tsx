@@ -57,7 +57,7 @@ export function Shell({
               className={marketplace === "walmart" ? "on" : ""}
               onClick={() => setMarketplace("walmart")}
               disabled={!walmartReady}
-              title={walmartReady ? "" : "Walmart ingestion is not built yet"}
+              title={walmartReady ? "" : "No Walmart sales have been ingested yet"}
             >
               Walmart
             </button>
