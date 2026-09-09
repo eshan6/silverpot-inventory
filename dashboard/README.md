@@ -248,6 +248,50 @@ they needed no new approval and no new secret. Walmart Connect, their
 advertising API, is a separate and harder approval, so it is postponed rather
 than promised.
 
+Harder in a specific way, and it is worth being precise about it because it is
+not the Amazon situation. Amazon's Advertising API has a self-serve
+application: you fill in a form and wait. Walmart Connect's Ads APIs are
+documented as available to *Walmart Connect Partner Network* partners -
+agencies and tech platforms - and an advertiser's own route is to authorise
+one of those partners from the Ad Center admin page. There is no button that
+mints advertising credentials for a seller.
+
+Since this repository has been wrong from Walmart's documentation twice
+already, that is checked rather than assumed. Run the *Ads sync* workflow with
+`walmart_diagnose` ticked: `collector/walmart_ads.py` asks each candidate
+Walmart Connect endpoint with the Marketplace token we already hold and prints
+the status codes. It reads only - it cannot create a campaign or spend a
+dollar - and it judges a known-good endpoint first, so a broken token reports
+as *inconclusive* rather than as a denial.
+
+Four outcomes and what each means:
+
+| What it prints | What it means |
+|---|---|
+| Any advertising endpoint answers 200 | There is a route. Probe it for its response shape before any figure is written. |
+| 403 *missing required security headers* | Rejected at the gateway, before access was ever considered. The wrong kind of credential, not a denial. |
+| A plain 401 / 403, control at 200 | A real refusal: this needs an approval or a partner authorisation. |
+| Everything 404, control at 200 | Wrong paths, not denied access. Says nothing either way. |
+
+**What it actually said, run on 2026-09-09.** The control answered 200 and
+every Sponsored Search endpoint answered `403 Request is missing required
+security headers` — the second row, not the third. Walmart Connect does not
+accept the Marketplace OAuth token at all: it wants the older signed scheme, a
+consumer id and an RSA-SHA256 signature, and those are issued to a partner
+rather than generated in Seller Center. The two `marketplace.walmartapis.com`
+candidates returned 404, so advertising is not hiding on the Marketplace host
+either.
+
+That is consistent with the partner-network reading and is not proof of it.
+What is proved is narrower and still decisive: there is no route to Walmart
+advertising from anything this repository already holds, so nothing can be
+built here until a credential of a different kind exists.
+
+Whichever way it lands, the database is already shaped for the answer:
+`ads_daily` and `ads_search_terms` both carry `marketplace` and `ad_program`,
+and `spend_daily` joins per marketplace, so Walmart rows need an ingestion
+module and no migration.
+
 Combined Amazon+Walmart views are meant to be impossible, and keeping
 `marketplace` on every row and every query is how that stays true.
 

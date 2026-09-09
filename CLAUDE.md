@@ -99,6 +99,7 @@ collector/
   orders_report.py  bulk history from the flat-file orders report (one-off)
   walmart_orders.py Walmart Marketplace orders -> units sold, same buckets
   ads.py            Amazon Ads Reports v3: SP, SB and SD; async request/poll/download
+  walmart_ads.py    Walmart Connect reachability check only - reads, writes nothing
   ads_auth.py       one-off OAuth helper for the Ads refresh token and profile id
   dashboard_db.py   the dashboard's Supabase project: upserts and the run ledger
   dashboard_sync.py daily sales ingestion
