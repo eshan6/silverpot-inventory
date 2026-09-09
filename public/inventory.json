@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-08T09:35:46+00:00",
+  "generated_at": "2026-09-09T09:38:57+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 46,
+      "available": 39,
       "in_stock": true,
-      "fba": 41,
+      "fba": 34,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 18.2,
       "inbound": 0
     },
     {
@@ -111,7 +111,7 @@
       "fba": 32,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 256.0,
       "inbound": 0
     },
     {
@@ -156,7 +156,7 @@
       "fba": 0,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 0.0,
       "inbound": 0
     },
     {
@@ -241,12 +241,12 @@
       "sku": "LW-IYO9-UF6F",
       "asin": "B0DLV19X7Y",
       "website_product_id": "",
-      "available": 5,
+      "available": 4,
       "in_stock": true,
       "fba": 0,
-      "wfs": 5,
+      "wfs": 4,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 32.0,
       "inbound": 0
     },
     {
@@ -261,7 +261,7 @@
       "fba": 0,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 0.0,
       "inbound": 0
     },
     {
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 48,
+      "available": 47,
       "in_stock": true,
-      "fba": 48,
+      "fba": 47,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 65.8,
       "inbound": 0
     },
     {
@@ -321,7 +321,7 @@
       "fba": 29,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 86.3,
       "inbound": 0
     },
     {
@@ -351,7 +351,7 @@
       "fba": 0,
       "wfs": 1,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 8.0,
       "inbound": 0
     },
     {
@@ -361,12 +361,12 @@
       "sku": "DL-EEDT-MG20",
       "asin": "B0DLWRZ5NY",
       "website_product_id": "",
-      "available": 25,
+      "available": 23,
       "in_stock": true,
-      "fba": 22,
+      "fba": 20,
       "wfs": 3,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 92.0,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 38,
+      "available": 41,
       "in_stock": true,
-      "fba": 38,
+      "fba": 41,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 41.0,
       "inbound": 0
     },
     {
@@ -421,12 +421,12 @@
       "sku": "US-ASRC-EUHM",
       "asin": "B0DLWTFRJ9",
       "website_product_id": "",
-      "available": 4,
+      "available": 3,
       "in_stock": true,
-      "fba": 4,
+      "fba": 3,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 24.0,
       "inbound": 0
     },
     {
@@ -441,7 +441,7 @@
       "fba": 41,
       "wfs": 18,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 472.0,
       "inbound": 0
     },
     {
@@ -466,12 +466,12 @@
       "sku": "Y5-C6HY-68LV",
       "asin": "B0DLWTG5XN",
       "website_product_id": "",
-      "available": 18,
+      "available": 17,
       "in_stock": true,
-      "fba": 13,
+      "fba": 12,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 39.7,
       "inbound": 0
     },
     {
@@ -496,12 +496,12 @@
       "sku": "SE-3UPE-IO7M",
       "asin": "",
       "website_product_id": "",
-      "available": 118,
+      "available": 112,
       "in_stock": true,
-      "fba": 118,
+      "fba": 112,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 96.0,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 100,
       "wfs": 84,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 490.7,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 109,
       "wfs": 29,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 322.0,
       "inbound": 0
     },
     {
@@ -546,7 +546,7 @@
       "fba": 141,
       "wfs": 28,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 338.0,
       "inbound": 0
     }
   ]
