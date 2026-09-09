@@ -77,11 +77,19 @@ PROBES: tuple[tuple[str, str, str, str], ...] = (
     ("Marketplace: report type list", "GET",
      f"{WALMART_HOST}/v3/reports/reportRequests"
      "?reportType=NOT_A_REAL_REPORT_TYPE&reportVersion=v1", OAUTH),
-    # Report type names, because one guess was not a search. The reports API
-    # is the only marketplace surface that answered 200 and it is scoped Full
-    # Access on this key, so if any ad data is reachable without the Walmart
-    # Connect gateway, it is behind one of these names. A 400 means the name
-    # does not exist; anything else means it does.
+    # Report type names. Settled on 2026-09-09: this endpoint is a perfect
+    # enumeration oracle, because an unknown reportType answers 400 while a
+    # real one answers 200 with a (possibly empty) list of requests. Fourteen
+    # candidates went out. Exactly three exist - PROMO, BUYBOX and
+    # ITEM_PERFORMANCE - and every advertising-flavoured name is invalid:
+    # ADVERTISING, ADS, AD_PERFORMANCE, ADVERTISING_REPORT,
+    # SPONSORED_PRODUCTS, CAMPAIGN, CAMPAIGN_PERFORMANCE, AD_SPEND all 400.
+    # So the Marketplace reports catalogue carries no advertising report, and
+    # that is now measured rather than assumed. PROMO is price promotions and
+    # BUYBOX is buy-box share; neither is ad spend.
+    #
+    # These stay in the sweep because they cost one call each and they are how
+    # a newly added report type gets noticed without anyone re-reading docs.
     *(("Marketplace: report " + name, "GET",
        f"{WALMART_HOST}/v3/reports/reportRequests"
        f"?reportType={name}&reportVersion=v1", OAUTH)
