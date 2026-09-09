@@ -1,3 +1,4 @@
 requests>=2.32
 gspread>=6.1
 google-auth>=2.30
+cryptography>=42

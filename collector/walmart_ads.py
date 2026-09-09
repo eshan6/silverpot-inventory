@@ -1,188 +1,286 @@
-"""Does anything we already hold reach Walmart Connect? A diagnostic, not a sync.
+"""Finding a route to Walmart advertising data. A diagnostic, never a sync.
 
-Walmart advertising is not the Walmart Marketplace API under a different path.
-Walmart Connect is a separate product with its own developer portal, and its
-documentation says the Ads APIs are available to Walmart Connect Partner
-Network partners - agencies and tech platforms - rather than to any seller who
-happens to advertise. An advertiser's own route is the Ad Center admin page,
-where they authorise a partner; there is no self-serve "generate advertising
-credentials" button of the kind Amazon has.
+The first pass at this concluded there was no route, on the strength of five
+probes and a documentation page. That was too little looking. Two things
+turned up on a second pass and both are free:
 
-That is a claim from documentation, and this repository has been wrong from
-documentation before: Walmart's inventory docs named no field at all and cost
-nine wrong guesses, and its orders endpoint hides every WFS order behind a
-shipNodeType the docs do not warn about. So before anyone applies for anything,
-this asks the live account and reports the status codes.
+1. **Walmart's advertising API is documented under the seller portal**, not
+   only the partner one - `us-marketplace/docs/sem-apis`. SEM is Walmart
+   Performance Ads, which is the same service as the WPA endpoints below.
+2. **A seller can mint the credential the advertising gateway wants**, with
+   nobody's approval: Seller Center -> Settings -> API -> Consumer IDs &
+   Private Keys -> Generate Key. That is the `403 Request is missing required
+   security headers` answered, in one self-serve click.
 
-It writes nothing, ingests nothing and creates nothing. It answers one
-question: do the Marketplace client id and secret already in this repository
-reach any Walmart Connect endpoint, and if not, how are they refused? A 401 or
-403 everywhere means the documentation is right and access needs an approval.
-A 200 anywhere means there is a route worth building on, and this prints which.
+So this module sweeps every candidate route and reports what each one says,
+under whichever credentials are present. It never writes, never ingests and
+never creates: every probe is a GET or a report-listing read, so nothing here
+can start a campaign or spend a dollar.
 
-    python -m collector.walmart_ads --diagnose
+    python -m collector.walmart_ads --diagnose   # the focused question
+    python -m collector.walmart_ads --explore    # the whole sweep, verbosely
 
-Nothing here prints a token or a secret - only the length of the access token,
-which is how the SP-API diagnostic does it, and the repository's logs are
-public.
+Three auth modes appear in the output because the answer depends on which one
+a given host accepts:
+
+    oauth   the Marketplace access token this repository already holds
+    signed  Consumer ID + RSA signature (walmart_sign), if configured
+    none    no credentials at all, to see how the host refuses a stranger
+
+Nothing prints a token, a key, a signature or a consumer id. Bodies from
+Walmart are printed because they are Walmart's own error text and they are
+where the useful detail lives; this repository's Actions logs are public, so
+nothing of ours joins them.
 """
+import os
 import sys
 
-from . import net, walmart
+from . import net, walmart, walmart_sign
 from .config import WALMART_HOST
 
-# Walmart Connect's own documentation gives this as the production base for the
-# Sponsored Search APIs. It is an api-proxy path rather than the marketplace
-# host, which is itself a hint that it is a different service with a different
-# front door.
+# Walmart Connect / Walmart Performance Ads. An api-proxy host rather than the
+# marketplace one, which is the first hint that it is a different front door
+# with different authentication.
 WPA_HOST = "https://developer.api.walmart.com/api-proxy/service/WPA/Api/v1"
 
-# Candidates, in the pattern walmart.py already uses for field names: the
-# documented one leads and the rest are alternates, because the documentation
-# has been wrong about this account before. Each is a read - nothing here can
-# create a campaign or spend money.
-PROBES: tuple[tuple[str, str, str], ...] = (
-    ("Sponsored Search advertisers", "GET", f"{WPA_HOST}/advertiser"),
-    ("Sponsored Search campaigns", "GET", f"{WPA_HOST}/campaign"),
-    ("Sponsored Search snapshot report", "GET", f"{WPA_HOST}/snapshot/report"),
-    ("Marketplace host: advertiser", "GET", f"{WALMART_HOST}/v3/advertising/advertiser"),
-    ("Marketplace host: ads", "GET", f"{WALMART_HOST}/v3/ads"),
-    # The control. This one is known to work, so a run where every line is a
-    # failure - including this one - is a broken token or a broken network,
-    # not a verdict about advertising access.
-    ("Control: WFS inventory (known good)", "GET", f"{WALMART_HOST}/v3/wfs/inventory"),
-)
+OAUTH, SIGNED, NONE = "oauth", "signed", "none"
 
-CONTROL = "Control: WFS inventory (known good)"
+CONTROL = "Control: WFS inventory"
+
+# Every candidate worth asking, with the credential each is asked under.
+#
+# The order matters to a reader, not to the code: the free routes that need no
+# new credential come first, because if one of those answers then nobody has
+# to generate anything. Ordered within that by how likely the documentation
+# makes them.
+PROBES: tuple[tuple[str, str, str, str], ...] = (
+    # --- Needs nothing new: the token this repository already holds ---
+    (CONTROL, "GET", f"{WALMART_HOST}/v3/wfs/inventory", OAUTH),
+    ("Marketplace: report requests", "GET",
+     f"{WALMART_HOST}/v3/reports/reportRequests", OAUTH),
+    # A deliberately impossible report type. Walmart's validators tend to
+    # answer an unknown enum by listing the ones it would have accepted, which
+    # enumerates the catalogue for free and without a guess. If an advertising
+    # report is in there, this whole question is answered on credentials the
+    # repository already holds.
+    ("Marketplace: report type list", "GET",
+     f"{WALMART_HOST}/v3/reports/reportRequests"
+     "?reportType=NOT_A_REAL_REPORT_TYPE&reportVersion=v1", OAUTH),
+    ("Marketplace: advertising report", "GET",
+     f"{WALMART_HOST}/v3/reports/reportRequests"
+     "?reportType=ADVERTISING&reportVersion=v1", OAUTH),
+    ("Marketplace: item performance", "GET",
+     f"{WALMART_HOST}/v3/reports/reportRequests"
+     "?reportType=ITEM_PERFORMANCE&reportVersion=v1", OAUTH),
+    ("Marketplace: insights item perf", "GET",
+     f"{WALMART_HOST}/v3/insights/items/performance", OAUTH),
+    ("Marketplace: SEM campaigns", "GET", f"{WALMART_HOST}/v3/sem/campaigns", OAUTH),
+    ("Marketplace: SEM report", "GET", f"{WALMART_HOST}/v3/sem/report", OAUTH),
+    ("Marketplace: advertising", "GET", f"{WALMART_HOST}/v3/advertising", OAUTH),
+    ("Marketplace: advertiser", "GET",
+     f"{WALMART_HOST}/v3/advertising/advertiser", OAUTH),
+    ("Marketplace: ads", "GET", f"{WALMART_HOST}/v3/ads", OAUTH),
+
+    # --- The advertising gateway, under the OAuth token it already refused ---
+    ("WPA advertiser (oauth)", "GET", f"{WPA_HOST}/advertiser", OAUTH),
+
+    # --- The advertising gateway, signed. The route this is really testing ---
+    ("WPA advertiser (signed)", "GET", f"{WPA_HOST}/advertiser", SIGNED),
+    ("WPA campaign (signed)", "GET", f"{WPA_HOST}/campaign", SIGNED),
+    ("WPA snapshot report (signed)", "GET", f"{WPA_HOST}/snapshot/report", SIGNED),
+
+    # --- Signed against the marketplace host, in case SEM lives there ---
+    ("Marketplace SEM (signed)", "GET", f"{WALMART_HOST}/v3/sem/campaigns", SIGNED),
+
+    # --- The stranger's view: how does the gateway refuse no credentials at
+    #     all? If that is byte-identical to the OAuth refusal, then the OAuth
+    #     token was never being read, which is itself the finding.
+    ("WPA advertiser (no auth)", "GET", f"{WPA_HOST}/advertiser", NONE),
+)
 
 PARTNER_HINT = (
     "Walmart Connect's Ads APIs are documented as available to Walmart Connect\n"
-    "   Partner Network partners, not to advertisers directly. An advertiser\n"
-    "   authorises a partner in Ad Center (Admin -> API Partner - Advertiser\n"
-    "   Level -> Add Partner); they do not mint their own credentials."
+    "   Partner Network partners. An advertiser can also authorise a partner in\n"
+    "   Ad Center (Admin -> API Partner - Advertiser Level -> Add Partner)."
 )
 
-# Confirmed against the live account on 2026-09-09. The WPA endpoints answer
-# 403 with this, which is *not* "you may not advertise" - it is the gateway
-# refusing the request before it ever looks at what we are allowed to do. The
-# distinction matters: one is a verdict about access, the other is a verdict
-# about our headers, and reading the second as the first is how you conclude
-# something false from a real response.
+SELLER_KEY_HINT = (
+    "Generate a Consumer ID and Private Key - free, self-serve, no approval:\n"
+    "   Seller Center -> Settings -> API -> Consumer IDs & Private Keys ->\n"
+    "   Generate Key. Then set WALMART_CONSUMER_ID and WALMART_PRIVATE_KEY\n"
+    "   and run this again."
+)
+
+# Confirmed live on 2026-09-09: the WPA endpoints answer 403 with this to an
+# OAuth token. It is *not* "you may not advertise" - it is the gateway
+# refusing the request's shape before anything looks at what we may do.
 GATEWAY_REJECTION = "missing required security headers"
 
 
-def _trim(text: str, limit: int = 160) -> str:
+def _trim(text: str, limit: int = 400) -> str:
     body = " ".join((text or "").split())
     return body[:limit] + ("..." if len(body) > limit else "")
 
 
-def probe(token: str, sess=None) -> list[tuple[str, int | None, str]]:
-    """Ask each candidate endpoint and return (label, status, note) per probe."""
+def _auth_headers(mode: str, token: str | None, private_key=None) -> dict | None:
+    """Headers for one probe, or None if that mode is not available."""
+    if mode == NONE:
+        return {"Accept": "application/json"}
+    if mode == OAUTH:
+        return walmart._headers(token) if token else None
+    if mode == SIGNED:
+        if not walmart_sign.configured():
+            return None
+        return walmart_sign.headers(private_key=private_key)
+    raise ValueError(mode)
+
+
+def probe(token: str | None, sess=None, private_key=None,
+          probes=PROBES) -> list[dict]:
+    """Ask every candidate. Returns one record per probe, never raising."""
     sess = sess or net.session()
-    out: list[tuple[str, int | None, str]] = []
-    for label, method, url in PROBES:
+    out: list[dict] = []
+    for label, method, url, mode in probes:
+        record = {"label": label, "mode": mode, "url": url,
+                  "status": None, "note": ""}
+        try:
+            head = _auth_headers(mode, token, private_key)
+        except Exception as exc:                            # noqa: BLE001
+            record["note"] = f"could not build {mode} headers - {type(exc).__name__}"
+            out.append(record)
+            continue
+        if head is None:
+            record["note"] = f"skipped: no {mode} credentials configured"
+            record["skipped"] = True
+            out.append(record)
+            continue
         try:
             resp = sess.request(
-                method, url,
-                headers=walmart._headers(token),
+                method, url, headers=head,
                 params={"limit": 1} if url.endswith("inventory") else None,
-                timeout=net.TIMEOUT,
-            )
-            note = "" if resp.status_code == 200 else _trim(resp.text)
-            out.append((label, resp.status_code, note))
-        except Exception as exc:                        # noqa: BLE001
-            out.append((label, None, net.describe_error(exc)))
+                timeout=net.TIMEOUT)
+            record["status"] = resp.status_code
+            record["note"] = "" if resp.status_code == 200 else _trim(resp.text)
+        except Exception as exc:                            # noqa: BLE001
+            record["note"] = net.describe_error(exc)
+        out.append(record)
     return out
 
 
-def verdict(results: list[tuple[str, int | None, str]]) -> list[str]:
-    """Read the status codes. The control is judged first and on its own.
+def verdict(results: list[dict]) -> list[str]:
+    """Read the sweep. The control is judged first and on its own.
 
-    The SP-API diagnostic once keyed its verdict off a canary it had
-    misunderstood and announced the app was dead while the endpoint that
-    mattered answered 200. The lesson generalises: decide what the run proves
-    only after checking that the run itself worked.
+    An earlier version of this called a gateway rejection "advertising is
+    refused", which was a false conclusion drawn from a real response. The
+    rule that prevents a repeat: never report on access until you have shown
+    the run itself worked, and never report a header complaint as a
+    permission answer.
     """
-    by_label = {label: code for label, code, _note in results}
-    control = by_label.get(CONTROL)
-    ads = {label: code for label, code, _note in results if label != CONTROL}
-    notes = {label: (note or "").lower() for label, _code, note in results
-             if label != CONTROL}
+    by = {r["label"]: r for r in results}
+    control = by.get(CONTROL, {}).get("status")
+    ads = [r for r in results if r["label"] != CONTROL and not r.get("skipped")]
+    skipped = [r for r in results if r.get("skipped")]
 
     if control != 200:
         return [
             "VERDICT: inconclusive. The control endpoint did not answer either,",
-            f"so this run proves nothing about advertising access (control: HTTP {control}).",
+            f"so this run proves nothing about advertising (control: HTTP {control}).",
             "Check the credentials and the network, then run it again.",
         ]
 
-    reachable = sorted(l for l, code in ads.items() if code == 200)
+    reachable = sorted(r["label"] for r in ads if r["status"] == 200)
     if reachable:
         return [
-            "VERDICT: the Marketplace credentials reach Walmart Connect.",
-            f"   answering: {', '.join(reachable)}",
-            "Probe one of those for its response shape before trusting a figure",
-            "from it. No advertising number gets written off a guessed field.",
-        ]
-
-    gateway = sorted(l for l, code in ads.items()
-                     if code in (401, 403) and GATEWAY_REJECTION in notes.get(l, ""))
-    if gateway:
-        return [
-            "VERDICT: rejected at the gateway, before any question of access.",
-            f"   turned away for its headers: {', '.join(gateway)}",
-            "Walmart Connect does not take the Marketplace OAuth token at all. It",
-            "wants the older signed scheme - a consumer id and an RSA signature -",
-            "and those are issued to a partner, not generated from Seller Center.",
+            "VERDICT: there is a route. These answered 200:",
+            f"   {', '.join(reachable)}",
             "",
-            "So this run does NOT prove we are denied advertising. It proves the",
-            "credentials in this repository are the wrong kind of credential, which",
-            "is what you would expect if the documentation below is right.",
-            f"   {PARTNER_HINT}",
+            "Next step is a shape probe, not an ingestion module. Nine wrong",
+            "guesses at a Walmart field name is why nothing gets written off a",
+            "field name that has not been seen in a real response.",
         ]
 
-    denied = sorted(l for l, code in ads.items() if code in (401, 403))
+    lines = ["VERDICT: no candidate answered 200. What each refusal means:"]
+    gateway = [r for r in ads if GATEWAY_REJECTION in (r["note"] or "").lower()]
+    denied = [r for r in ads
+              if r["status"] in (401, 403) and r not in gateway]
+    absent = [r for r in ads if r["status"] == 404]
+
+    if gateway:
+        modes = sorted({r["mode"] for r in gateway})
+        lines += [
+            f"   gateway refused the request's shape ({len(gateway)}, auth: "
+            f"{', '.join(modes)}) - a complaint about headers, not access",
+        ]
+        if SIGNED in modes:
+            lines += [
+                "   The signed attempt was ALSO refused for its headers, so the",
+                "   signature itself is being rejected: wrong canonical string,",
+                "   wrong key version, or a clock skew. That is a bug to fix here,",
+                "   not an approval to go and ask for.",
+            ]
+        elif any(r.get("skipped") for r in skipped):
+            lines += ["", f"   {SELLER_KEY_HINT}"]
     if denied:
-        return [
-            "VERDICT: the credentials are good and advertising is refused.",
-            f"   refused with 401/403: {', '.join(denied)}",
+        lines += [
+            f"   genuinely refused ({len(denied)}): "
+            f"{', '.join(sorted(r['label'] for r in denied))}",
             f"   {PARTNER_HINT}",
         ]
+    if absent:
+        lines += [f"   not a real path ({len(absent)}) - says nothing either way"]
+    if skipped:
+        lines += ["",
+                  f"   {len(skipped)} probe(s) skipped for want of credentials:",
+                  f"   {', '.join(sorted(r['label'] for r in skipped))}"]
+    return lines
 
-    return [
-        "VERDICT: no advertising endpoint answered and none refused us either -",
-        "every candidate path was absent (404) or errored. That is a wrong path,",
-        "not a denied one, so it says nothing about whether access exists.",
-        f"   {PARTNER_HINT}",
-    ]
+
+def report(results: list[dict], verbose: bool) -> None:
+    for r in results:
+        if r.get("skipped"):
+            print(f"   [{r['label']:<32}] {r['mode']:<6}  -- {r['note']}")
+            continue
+        print(f"   [{r['label']:<32}] {r['mode']:<6}  HTTP {r['status']}")
+        if r["note"]:
+            print(f"      {r['note']}")
+        if verbose:
+            print(f"      {r['url']}")
 
 
-def diagnose() -> int:
-    print("=" * 68)
-    print("WALMART CONNECT DIAGNOSTIC")
-    print("=" * 68)
+def diagnose(verbose: bool = False) -> int:
+    print("=" * 72)
+    print("WALMART ADVERTISING: IS THERE A ROUTE?")
+    print("=" * 72)
     print("Reads only. Writes nothing, spends nothing, creates nothing.")
 
     if not walmart.configured():
         print(f"\nMissing: {', '.join(walmart.missing())}")
         return 1
 
+    token: str | None
     try:
         token = walmart.get_access_token()
-        print("\n1. Token exchange (Marketplace) : OK")
-        print(f"   access token length          : {len(token)}")
-    except Exception as exc:                            # noqa: BLE001
-        print(f"\n1. Token exchange (Marketplace) : FAILED - {net.describe_error(exc)}")
+        print("\n1. Marketplace OAuth token : OK "
+              f"({len(token)} chars)")
+    except Exception as exc:                                # noqa: BLE001
+        print(f"\n1. Marketplace OAuth token : FAILED - {net.describe_error(exc)}")
         return 1
 
-    print("\n2. Candidate endpoints")
-    results = probe(token)
-    for label, code, note in results:
-        print(f"   [{label:<36}] HTTP {code}")
-        if note:
-            print(f"      {note}")
+    print(f"2. Signed credentials      : {walmart_sign.describe()}")
 
-    print("-" * 68)
+    private_key = None
+    if walmart_sign.configured():
+        try:
+            private_key = walmart_sign.load_private_key(
+                os.getenv(walmart_sign.PRIVATE_KEY_ENV, ""))
+        except Exception as exc:                            # noqa: BLE001
+            print(f"   private key will not load - {type(exc).__name__}: {exc}")
+
+    print("\n3. Candidates")
+    results = probe(token, private_key=private_key)
+    report(results, verbose)
+
+    print("-" * 72)
     for line in verdict(results):
         print(line)
     return 0
@@ -190,11 +288,12 @@ def diagnose() -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = list(argv if argv is not None else sys.argv[1:])
-    if args and args != ["--diagnose"]:
+    known = {"--diagnose", "--explore"}
+    if not args or not set(args) <= known:
         print(__doc__)
         return 2
     net.apply_ipv4_preference()
-    return diagnose()
+    return diagnose(verbose="--explore" in args)
 
 
 if __name__ == "__main__":

@@ -3,8 +3,10 @@
 Sales, Ads and Spend for Silverpot Tea, behind a login, with a Super Admin /
 Admin / Viewer hierarchy and per-user saved views.
 
-Amazon and Walmart sales are both live. Walmart advertising is not: Walmart
-Connect is a separate approval, and is postponed rather than promised.
+Amazon and Walmart sales are both live. Walmart advertising is not yet, but
+the route to it has been found and is free: Walmart Connect's gateway wants
+Walmart's older signed-request scheme, and a seller can mint that credential
+themselves in Seller Center without any approval.
 
 ## Status
 
@@ -20,7 +22,7 @@ Connect is a separate approval, and is postponed rather than promised.
 | Admin UI (people, invites, audit log) | **built** |
 | One-paste Supabase setup | **built and tested** |
 | Walmart sales ingestion | **built**, and backfilled to the first order |
-| Walmart advertising | postponed on purpose (see the end) |
+| Walmart advertising | route identified, signing **built**; needs one self-serve key |
 
 ## The shape of it
 
@@ -244,25 +246,48 @@ Google Sheets outage, and nothing on the page said so.
 
 **Walmart advertising.** Walmart *sales* are live: orders come from the
 Marketplace API on the credentials the WFS inventory pull already uses, so
-they needed no new approval and no new secret. Walmart Connect, their
-advertising API, is a separate and harder approval, so it is postponed rather
-than promised.
+they needed no new approval and no new secret. Advertising is a different
+service behind a different front door, and finding the door took three
+read-only sweeps of the live account.
 
-Harder in a specific way, and it is worth being precise about it because it is
-not the Amazon situation. Amazon's Advertising API has a self-serve
-application: you fill in a form and wait. Walmart Connect's Ads APIs are
-documented as available to *Walmart Connect Partner Network* partners -
-agencies and tech platforms - and an advertiser's own route is to authorise
-one of those partners from the Ad Center admin page. There is no button that
-mints advertising credentials for a seller.
+The first pass concluded there was no route, on five probes and a
+documentation page saying Walmart Connect's Ads APIs are for *Walmart Connect
+Partner Network* partners. That conclusion was too confident for the evidence,
+and widening the sweep broke it: the advertising gateway rejects a request
+before it authenticates it, so nothing about permissions had actually been
+tested. What it wants is Walmart's older signed scheme — and a seller can mint
+that credential in Seller Center with no approval at all.
 
 Since this repository has been wrong from Walmart's documentation twice
-already, that is checked rather than assumed. Run the *Ads sync* workflow with
-`walmart_diagnose` ticked: `collector/walmart_ads.py` asks each candidate
-Walmart Connect endpoint with the Marketplace token we already hold and prints
-the status codes. It reads only - it cannot create a campaign or spend a
-dollar - and it judges a known-good endpoint first, so a broken token reports
+already, none of this is taken on trust. Run the *Ads sync* workflow with
+`walmart_diagnose` ticked: `collector/walmart_ads.py` sweeps every candidate
+route under every credential available and prints what each one says. It reads
+only — every probe is a `GET`, so it cannot create a campaign or spend a
+dollar — and it judges a known-good endpoint first, so a broken token reports
 as *inconclusive* rather than as a denial.
+
+### What the sweep has established so far
+
+Three runs on 2026-09-09, all read-only. Every line below is a live status
+code from Silverpot's own account, not a documentation claim:
+
+| Route | Result | What it means |
+|---|---|---|
+| `/v3/wfs/inventory` (control) | 200 | The token and network are fine, so the rest of the run means something |
+| `/v3/reports/reportRequests` | 200 | The reports API is open to us |
+| `…?reportType=ADVERTISING` | **400 invalid** | There is no advertising report type. The Marketplace API does not carry ad spend. |
+| `…?reportType=ITEM_PERFORMANCE` | 200 | Item performance is available — page views and conversion, not ad spend |
+| `/v3/sem/*`, `/v3/advertising/*`, `/v3/ads` | 404 | Advertising is not on the Marketplace host under any name tried |
+| WPA `/advertiser` with OAuth | 403 *missing security headers* | The gateway rejects the request's shape |
+| WPA `/advertiser` with **no credentials at all** | 403, **byte-identical** | The decisive one: that gateway never reads the OAuth token. It refuses before authentication, so re-authorising could never help. |
+
+That last pair is why the remaining route is signing rather than approval.
+The advertising gateway speaks Walmart's older scheme — a Consumer ID and an
+RSA signature — and **a seller can mint that credential themselves**, free and
+without approval, in Seller Center → Settings → API → Consumer IDs & Private
+Keys → Generate Key. `collector/walmart_sign.py` implements the scheme;
+setting `WALMART_CONSUMER_ID` and `WALMART_PRIVATE_KEY` turns on the four
+signed probes that currently skip.
 
 Four outcomes and what each means:
 
@@ -272,20 +297,6 @@ Four outcomes and what each means:
 | 403 *missing required security headers* | Rejected at the gateway, before access was ever considered. The wrong kind of credential, not a denial. |
 | A plain 401 / 403, control at 200 | A real refusal: this needs an approval or a partner authorisation. |
 | Everything 404, control at 200 | Wrong paths, not denied access. Says nothing either way. |
-
-**What it actually said, run on 2026-09-09.** The control answered 200 and
-every Sponsored Search endpoint answered `403 Request is missing required
-security headers` — the second row, not the third. Walmart Connect does not
-accept the Marketplace OAuth token at all: it wants the older signed scheme, a
-consumer id and an RSA-SHA256 signature, and those are issued to a partner
-rather than generated in Seller Center. The two `marketplace.walmartapis.com`
-candidates returned 404, so advertising is not hiding on the Marketplace host
-either.
-
-That is consistent with the partner-network reading and is not proof of it.
-What is proved is narrower and still decisive: there is no route to Walmart
-advertising from anything this repository already holds, so nothing can be
-built here until a credential of a different kind exists.
 
 Whichever way it lands, the database is already shaped for the answer:
 `ads_daily` and `ads_search_terms` both carry `marketplace` and `ad_program`,
