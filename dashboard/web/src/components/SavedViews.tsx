@@ -41,7 +41,7 @@ export function SavedViews<T extends Record<string, unknown>>({
     <div className="views">
       <span className="views-label">Saved views</span>
 
-      {views.length === 0 && <span className="views-none">none yet</span>}
+      {views.length === 0 && <span className="views-none">None yet</span>}
 
       {views.map((v) => (
         <span key={v.id} className="chip">
@@ -62,7 +62,7 @@ export function SavedViews<T extends Record<string, unknown>>({
       <span className="views-save">
         <input
           value={name}
-          placeholder="Save these settings as…"
+          placeholder="Name these settings…"
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
         />
@@ -72,7 +72,7 @@ export function SavedViews<T extends Record<string, unknown>>({
             checked={asDefault}
             onChange={(e) => setAsDefault(e.target.checked)}
           />
-          default
+          Default
         </label>
         <button className="btn ghost" disabled={!name.trim() || busy}
                 onClick={() => void submit()}>

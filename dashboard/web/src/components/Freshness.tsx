@@ -21,13 +21,19 @@ import type { IngestRun, Marketplace } from "../lib/types";
  */
 const LABEL: Record<string, string> = {
   "sp-api-orders": "Sales",
-  "ads-api": "Ads",
+  "ads-api": "Advertising",
+};
+
+const MARKET: Record<string, string> = {
+  amazon: "Amazon",
+  walmart: "Walmart",
 };
 
 function Line({ marketplace, source }: { marketplace: Marketplace; source: string }) {
   const [run, setRun] = useState<IngestRun | null>(null);
   const [loaded, setLoaded] = useState(false);
   const what = LABEL[source] ?? source;
+  const where = MARKET[marketplace] ?? marketplace;
 
   useEffect(() => {
     let alive = true;
@@ -53,7 +59,7 @@ function Line({ marketplace, source }: { marketplace: Marketplace; source: strin
   if (!run) {
     return (
       <div className="banner bad">
-        {what} has never been ingested for {marketplace}. Every figure below is
+        {what} data has never been ingested for {where}. Every figure below is
         absent rather than zero.
       </div>
     );
@@ -62,7 +68,7 @@ function Line({ marketplace, source }: { marketplace: Marketplace; source: strin
   if (run.status === "failed") {
     return (
       <div className="banner bad">
-        Last {marketplace} {what.toLowerCase()} sync failed{" "}
+        Last {where} {what.toLowerCase()} sync failed{" "}
         {agoWords(run.finished_at ?? run.started_at)}
         {run.error ? ` — ${run.error}` : ""}. Figures below are from before that.
       </div>
@@ -77,7 +83,7 @@ function Line({ marketplace, source }: { marketplace: Marketplace; source: strin
 
   return (
     <div className={`banner${stale ? " stale" : ""}`}>
-      {what} data as of {agoWords(stamp)}
+      {where} {what.toLowerCase()} data as of {agoWords(stamp)}
       {run.covers_to ? `, covering through ${run.covers_to}` : ""}
       {stale ? " — that is older than expected for a twice-daily sync." : "."}
     </div>

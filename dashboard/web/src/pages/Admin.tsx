@@ -196,7 +196,7 @@ export default function Admin() {
                             () => supabase.from("profiles")
                               .update({ role: e.target.value as Role })
                               .eq("id", p.id),
-                            `${p.email} is now ${ROLE_LABEL[e.target.value as Role].toLowerCase()}.`,
+                            `Updated ${p.email} to ${ROLE_LABEL[e.target.value as Role].toLowerCase()}.`,
                           )
                         }
                       >
@@ -222,8 +222,8 @@ export default function Admin() {
                               .update({ is_active: !p.is_active })
                               .eq("id", p.id),
                             p.is_active
-                              ? `${p.email} can no longer sign in.`
-                              : `${p.email} has access again.`,
+                              ? `Deactivated ${p.email}. They can no longer sign in.`
+                              : `Reactivated ${p.email}. They have access again.`,
                           )
                         }
                       >

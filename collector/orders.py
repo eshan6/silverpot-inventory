@@ -50,6 +50,16 @@ TRAILING_DAYS = 3
 PAGE_PAUSE_SECONDS = 1.0
 
 
+def today_et() -> date:
+    """Today's date in the seller's timezone.
+
+    Stated once so no caller reaches for `date.today()`, which is the runner's
+    idea of today and is already tomorrow in UTC for a fifth of every Eastern
+    evening.
+    """
+    return datetime.now(SELLER_TZ).date()
+
+
 def day_window_utc(day: date) -> tuple[str, str]:
     """The UTC instants bounding one Eastern calendar day.
 
@@ -237,6 +247,6 @@ def trailing_days(today: date | None = None, count: int = TRAILING_DAYS) -> list
     and writing a partial day as if it were complete would make every
     cost-per-unit reading for the current day look artificially bad.
     """
-    today = today or datetime.now(SELLER_TZ).date()
+    today = today or today_et()
     end = today - timedelta(days=1)
     return [end - timedelta(days=i) for i in range(count - 1, -1, -1)]

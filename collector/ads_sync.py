@@ -16,7 +16,7 @@ import argparse
 import json
 import sys
 
-from . import ads, dashboard_db, net, orders
+from . import ads, backfill, dashboard_db, net, orders
 
 # Attribution windows mean recent days keep moving after the fact: a click
 # today can be credited with a sale for the next 7 or 14 days. So the window
@@ -28,6 +28,16 @@ TABLE_FOR_GRAIN = {
     "search_term": "ads_search_terms",
 }
 
+BACKFILL_SETTING = "ads_backfill"
+
+# Advertising history is far shorter-lived than order history: Amazon keeps
+# roughly a quarter of it available for reporting, against two years of orders.
+# Like the sales horizon this is a ceiling rather than a claim - a request for
+# a range Amazon will not serve is caught and ends the walk, so being wrong
+# here costs one skipped chunk and nothing else.
+ADS_HORIZON_DAYS = 95
+ADS_CHUNK_DAYS = 30
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -36,6 +46,9 @@ def main() -> int:
                     help="print raw report rows and exit, writing nothing")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--only", help="one key from ads.REPORTS, for debugging")
+    ap.add_argument("--no-backfill", action="store_true",
+                    help="only re-read the trailing window, do not extend "
+                         "the archive further back")
     args = ap.parse_args()
 
     if not ads.configured():
@@ -99,7 +112,57 @@ def main() -> int:
 
     dashboard_db.finish_run(run_id, "ok", rows_written=written)
     print(f"Wrote {written} row(s)")
+
+    if not args.no_backfill:
+        extend_history(token, keys, start)
     return 0
+
+
+def extend_history(token: str, keys: list[str], oldest_covered) -> int:
+    """Reach one chunk further into advertising history.
+
+    Total, like its sales counterpart: this runs after the day's figures are
+    written and the run is recorded as ok, so a chunk Amazon declines to serve
+    is reported and skipped rather than turning a good run red. A declined
+    chunk is also the most likely way this walk ends - it is how the real
+    retention window announces itself, rather than being guessed at here.
+    """
+    try:
+        state = backfill.State.from_settings(
+            dashboard_db.get_setting(BACKFILL_SETTING))
+        chunk = backfill.next_chunk(state, start_from=oldest_covered,
+                                    today=orders.today_et(),
+                                    chunk_days=ADS_CHUNK_DAYS,
+                                    horizon_days=ADS_HORIZON_DAYS)
+        print(backfill.describe(state, chunk))
+        if not chunk:
+            if not state.done:
+                dashboard_db.set_setting(
+                    BACKFILL_SETTING,
+                    backfill.advance(state, chunk, 0,
+                                     horizon_days=ADS_HORIZON_DAYS).as_settings())
+            return 0
+
+        written = 0
+        found = 0
+        for key in keys:
+            spec = ads.REPORTS[key]
+            rows = ads.fetch(token, key, chunk[0], chunk[-1])
+            found += len(rows)
+            written += dashboard_db.upsert(TABLE_FOR_GRAIN[spec["grain"]], rows)
+
+        print(f"Backfill: {written} row(s) for {chunk[0]}..{chunk[-1]}")
+        after = backfill.advance(state, chunk, found,
+                                 horizon_days=ADS_HORIZON_DAYS,
+                                 today=orders.today_et())
+        dashboard_db.set_setting(BACKFILL_SETTING, after.as_settings())
+        if after.done:
+            print(f"Backfill: finished - advertising history reaches {after.cursor}")
+        return written
+    except Exception as exc:  # noqa: BLE001 - see docstring
+        print(f"Backfill skipped this run: {net.describe_error(exc)}",
+              file=sys.stderr)
+        return 0
 
 
 if __name__ == "__main__":

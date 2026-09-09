@@ -140,7 +140,7 @@ export default function Sales({ marketplace }: { marketplace: Marketplace }) {
             <div className="stat">
               <div className="n">{days ? (totals.units / days).toFixed(1) : "—"}</div>
               <div className="l">Units per day</div>
-              <div className="d">over {days} day{days === 1 ? "" : "s"}</div>
+              <div className="d">Over {days} day{days === 1 ? "" : "s"}</div>
             </div>
           </div>
 
@@ -159,7 +159,7 @@ export default function Sales({ marketplace }: { marketplace: Marketplace }) {
                 <tr key={p.key}>
                   <td className="name">
                     {p.name}
-                    <small>{p.code ?? "unattributed SKU"}</small>
+                    <small>{p.code ?? "Unattributed SKU"}</small>
                   </td>
                   <td>
                     <div className="bar">
