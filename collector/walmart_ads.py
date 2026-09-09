@@ -7,10 +7,16 @@ turned up on a second pass and both are free:
 1. **Walmart's advertising API is documented under the seller portal**, not
    only the partner one - `us-marketplace/docs/sem-apis`. SEM is Walmart
    Performance Ads, which is the same service as the WPA endpoints below.
-2. **A seller can mint the credential the advertising gateway wants**, with
-   nobody's approval: Seller Center -> Settings -> API -> Consumer IDs &
-   Private Keys -> Generate Key. That is the `403 Request is missing required
-   security headers` answered, in one self-serve click.
+2. The gateway wants a consumer id and a signature. Walmart used to let a
+   seller mint those - and no longer does. Confirmed on this account on
+   2026-09-09: the developer portal's API Keys page offers ClientId and
+   ClientSecret and nothing else, `seller.walmart.com/settings/api/
+   consumer-id-and-private-keys` now redirects to a generic page, and the
+   portal states that new Delegated Access keys are no longer issued at all.
+   So the credential that documentation says to generate cannot be generated.
+   What remains untested is whether `WM_CONSUMER.ID` simply means the
+   ClientId, which several Walmart services treat it as - and that costs
+   nothing to ask.
 
 So this module sweeps every candidate route and reports what each one says,
 under whichever credentials are present. It never writes, never ingests and
@@ -20,12 +26,14 @@ can start a campaign or spend a dollar.
     python -m collector.walmart_ads --diagnose   # the focused question
     python -m collector.walmart_ads --explore    # the whole sweep, verbosely
 
-Three auth modes appear in the output because the answer depends on which one
+Five auth modes appear in the output because the answer depends on which one
 a given host accepts:
 
-    oauth   the Marketplace access token this repository already holds
-    signed  Consumer ID + RSA signature (walmart_sign), if configured
-    none    no credentials at all, to see how the host refuses a stranger
+    oauth      the Marketplace access token this repository already holds
+    oauth+cid  that token plus WM_CONSUMER.ID carrying the ClientId
+    cid        WM_CONSUMER.ID alone, no token, to see which one it wants
+    signed     Consumer ID + RSA signature (walmart_sign), if ever configured
+    none       no credentials at all, to see how the host refuses a stranger
 
 Nothing prints a token, a key, a signature or a consumer id. Bodies from
 Walmart are printed because they are Walmart's own error text and they are
@@ -44,6 +52,8 @@ from .config import WALMART_HOST
 WPA_HOST = "https://developer.api.walmart.com/api-proxy/service/WPA/Api/v1"
 
 OAUTH, SIGNED, NONE = "oauth", "signed", "none"
+# WM_CONSUMER.ID carrying the ClientId, with and without the OAuth token.
+OAUTH_CID, CID = "oauth+cid", "cid"
 
 CONTROL = "Control: WFS inventory"
 SIGNED_CONTROL = "Control: WFS inventory, signed"
@@ -85,6 +95,17 @@ PROBES: tuple[tuple[str, str, str, str], ...] = (
     # --- The advertising gateway, under the OAuth token it already refused ---
     ("WPA advertiser (oauth)", "GET", f"{WPA_HOST}/advertiser", OAUTH),
 
+    # --- The ClientId as WM_CONSUMER.ID: free, and needs no new credential ---
+    # The developer portal issues ClientId and ClientSecret and nothing else,
+    # so if the advertising gateway wants a consumer id, this is the only one
+    # that exists for this account. Tried with the OAuth token and without,
+    # because which of the two it wants is exactly what is unknown.
+    ("WPA advertiser (oauth+cid)", "GET", f"{WPA_HOST}/advertiser", OAUTH_CID),
+    ("WPA campaign (oauth+cid)", "GET", f"{WPA_HOST}/campaign", OAUTH_CID),
+    ("WPA snapshot report (oauth+cid)", "GET",
+     f"{WPA_HOST}/snapshot/report", OAUTH_CID),
+    ("WPA advertiser (cid only)", "GET", f"{WPA_HOST}/advertiser", CID),
+
     # --- Is our signature itself any good? ---
     # The same endpoint as the OAuth control, signed instead. Walmart's legacy
     # scheme is accepted on the marketplace host, so this separates two
@@ -115,11 +136,17 @@ PARTNER_HINT = (
     "   Ad Center (Admin -> API Partner - Advertiser Level -> Add Partner)."
 )
 
+# Superseded on 2026-09-09 by the account itself. The developer portal's API
+# Keys page offers ClientId and ClientSecret and nothing else, and says new
+# Delegated Access keys for Solution Providers are no longer issued at all.
+# So there is no Consumer ID and Private Key to generate: Walmart has retired
+# that scheme here. The hint stands only for an account that still has it.
 SELLER_KEY_HINT = (
-    "Generate a Consumer ID and Private Key - free, self-serve, no approval:\n"
-    "   Seller Center -> Settings -> API -> Consumer IDs & Private Keys ->\n"
-    "   Generate Key. Then set WALMART_CONSUMER_ID and WALMART_PRIVATE_KEY\n"
-    "   and run this again."
+    "If this account still offers it: Seller Center -> Settings -> API ->\n"
+    "   Consumer IDs & Private Keys -> Generate Key, then set\n"
+    "   WALMART_CONSUMER_ID and WALMART_PRIVATE_KEY. Silverpot's account does\n"
+    "   NOT offer it - the portal issues ClientId and ClientSecret only - so\n"
+    "   the oauth+cid probes above are the ones that matter here."
 )
 
 # Confirmed live on 2026-09-09: the WPA endpoints answer 403 with this to an
@@ -143,6 +170,23 @@ def _auth_headers(mode: str, token: str | None, private_key=None) -> dict | None
         if not walmart_sign.configured():
             return None
         return walmart_sign.headers(private_key=private_key)
+    if mode in (OAUTH_CID, CID):
+        # WM_CONSUMER.ID is not always a separate credential. On several
+        # Walmart services it is simply the ClientId from the developer
+        # portal, and the portal no longer issues anything else - confirmed
+        # on 2026-09-09, where the account's API Keys page offers ClientId and
+        # ClientSecret and nothing more. So the "missing required security
+        # headers" 403 may mean nothing more than that we never sent the
+        # ClientId as a header, which costs nothing to find out.
+        client_id = os.getenv("WALMART_CLIENT_ID")
+        if not client_id:
+            return None
+        head = walmart._headers(token) if mode == OAUTH_CID else {
+            "Accept": "application/json", "WM_SVC.NAME": "Walmart Marketplace"}
+        if mode == OAUTH_CID and not token:
+            return None
+        head["WM_CONSUMER.ID"] = client_id
+        return head
     raise ValueError(mode)
 
 
@@ -178,6 +222,19 @@ def probe(token: str | None, sess=None, private_key=None,
     return out
 
 
+def is_advertising(record: dict) -> bool:
+    """Is this probe actually asking about advertising?
+
+    Derived from the URL rather than a hand-kept list, so a probe added later
+    is classified by where it points instead of by whether someone remembered
+    to register it.
+    """
+    url = (record.get("url") or "").lower()
+    if url.startswith(WPA_HOST.lower()):
+        return True
+    return any(mark in url for mark in ("/sem", "advertis", "/ads"))
+
+
 def verdict(results: list[dict]) -> list[str]:
     """Read the sweep. The control is judged first and on its own.
 
@@ -191,8 +248,16 @@ def verdict(results: list[dict]) -> list[str]:
     control = by.get(CONTROL, {}).get("status")
     signed_control = by.get(SIGNED_CONTROL, {})
     controls = {CONTROL, SIGNED_CONTROL}
+    # Only advertising probes can answer the advertising question. The sweep
+    # also asks endpoints that are merely nearby - the reports API, item
+    # performance - and on 2026-09-09 two of those answered 200 and this
+    # function announced "there is a route". They are marketplace endpoints
+    # carrying no ad spend, and reporting them as a route to advertising was
+    # exactly the sort of cheerful wrong answer the rest of this module is
+    # built to avoid.
     ads = [r for r in results
-           if r["label"] not in controls and not r.get("skipped")]
+           if r["label"] not in controls and not r.get("skipped")
+           and is_advertising(r)]
     skipped = [r for r in results if r.get("skipped")]
 
     if control != 200:

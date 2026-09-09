@@ -22,8 +22,11 @@ GATEWAY = ('{"details":{"Description":"Request is missing required security '
            'headers, please read documentation for security headers"}}')
 
 
-def rec(label, status=404, note="", mode=wa.OAUTH, skipped=False):
-    r = {"label": label, "mode": mode, "url": "https://example.invalid",
+def rec(label, status=404, note="", mode=wa.OAUTH, skipped=False, url=None):
+    # Default to an advertising URL: most records in these tests stand for
+    # advertising probes, and the verdict now ignores anything else.
+    r = {"label": label, "mode": mode,
+         "url": url or f"{wa.WPA_HOST}/advertiser",
          "status": status, "note": note}
     if skipped:
         r["skipped"] = True
@@ -137,6 +140,41 @@ class TestVerdict(unittest.TestCase):
         self.assertIn("says nothing", said)
 
 
+class TestWhatCountsAsAdvertising(unittest.TestCase):
+    """The sweep asks nearby endpoints too. Only ad ones answer the question."""
+
+    def test_a_marketplace_report_endpoint_is_not_advertising(self):
+        # This is the live case that broke it. On 2026-09-09 the reports API
+        # and item performance both answered 200, and the verdict announced
+        # "there is a route" - to endpoints carrying no ad spend at all.
+        for url in (
+            "https://marketplace.walmartapis.com/v3/reports/reportRequests",
+            "https://marketplace.walmartapis.com/v3/reports/reportRequests"
+            "?reportType=ITEM_PERFORMANCE&reportVersion=v1",
+            "https://marketplace.walmartapis.com/v3/wfs/inventory",
+        ):
+            self.assertFalse(wa.is_advertising({"url": url}), url)
+
+    def test_the_advertising_gateway_and_the_ad_paths_are(self):
+        for url in (f"{wa.WPA_HOST}/advertiser",
+                    f"{wa.WPA_HOST}/snapshot/report",
+                    "https://marketplace.walmartapis.com/v3/sem/campaigns",
+                    "https://marketplace.walmartapis.com/v3/advertising",
+                    "https://marketplace.walmartapis.com/v3/ads"):
+            self.assertTrue(wa.is_advertising({"url": url}), url)
+
+    def test_a_reports_200_is_not_reported_as_an_advertising_route(self):
+        said = " ".join(wa.verdict([
+            rec(CONTROL, 200, url="https://marketplace.walmartapis.com/v3/wfs/inventory"),
+            rec(wa.SIGNED_CONTROL, skipped=True, mode=wa.SIGNED),
+            rec("Marketplace: report requests", 200,
+                url="https://marketplace.walmartapis.com/v3/reports/reportRequests"),
+            rec("WPA advertiser (oauth)", 403, GATEWAY),
+        ]))
+        self.assertNotIn("there is a route", said)
+        self.assertIn("headers, not access", said)
+
+
 class TestProbes(unittest.TestCase):
     def test_the_control_is_one_of_the_probes(self):
         self.assertIn(CONTROL, [label for label, _m, _u, _a in wa.PROBES])
@@ -153,9 +191,28 @@ class TestProbes(unittest.TestCase):
         modes = [auth for _l, _m, _u, auth in wa.PROBES]
         self.assertLess(modes.index(wa.OAUTH), modes.index(wa.SIGNED))
 
-    def test_all_three_auth_modes_are_exercised(self):
+    def test_every_auth_mode_is_exercised(self):
+        # oauth+cid and cid exist because Walmart's developer portal issues
+        # this account a ClientId and ClientSecret and nothing else - there is
+        # no separate consumer id to hold. If the advertising gateway wants a
+        # WM_CONSUMER.ID, the ClientId is the only candidate that exists.
         self.assertEqual({auth for _l, _m, _u, auth in wa.PROBES},
-                         {wa.OAUTH, wa.SIGNED, wa.NONE})
+                         {wa.OAUTH, wa.OAUTH_CID, wa.CID, wa.SIGNED, wa.NONE})
+
+    def test_the_client_id_modes_need_no_credential_we_do_not_have(self):
+        # The whole point of these two: they must never skip on this account,
+        # because WALMART_CLIENT_ID is already a secret here.
+        import os
+        os.environ["WALMART_CLIENT_ID"] = "some-client-id"
+        try:
+            with_token = wa._auth_headers(wa.OAUTH_CID, "tok")
+            without = wa._auth_headers(wa.CID, None)
+        finally:
+            del os.environ["WALMART_CLIENT_ID"]
+        self.assertEqual(with_token["WM_CONSUMER.ID"], "some-client-id")
+        self.assertEqual(without["WM_CONSUMER.ID"], "some-client-id")
+        # cid-only must genuinely carry no token, or it tests nothing new.
+        self.assertNotIn("WM_SEC.ACCESS_TOKEN", without)
 
     def test_a_probe_that_throws_does_not_end_the_sweep(self):
         class FakeResp:
