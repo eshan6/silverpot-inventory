@@ -153,9 +153,28 @@ class TestProbes(unittest.TestCase):
         modes = [auth for _l, _m, _u, auth in wa.PROBES]
         self.assertLess(modes.index(wa.OAUTH), modes.index(wa.SIGNED))
 
-    def test_all_three_auth_modes_are_exercised(self):
+    def test_every_auth_mode_is_exercised(self):
+        # oauth+cid and cid exist because Walmart's developer portal issues
+        # this account a ClientId and ClientSecret and nothing else - there is
+        # no separate consumer id to hold. If the advertising gateway wants a
+        # WM_CONSUMER.ID, the ClientId is the only candidate that exists.
         self.assertEqual({auth for _l, _m, _u, auth in wa.PROBES},
-                         {wa.OAUTH, wa.SIGNED, wa.NONE})
+                         {wa.OAUTH, wa.OAUTH_CID, wa.CID, wa.SIGNED, wa.NONE})
+
+    def test_the_client_id_modes_need_no_credential_we_do_not_have(self):
+        # The whole point of these two: they must never skip on this account,
+        # because WALMART_CLIENT_ID is already a secret here.
+        import os
+        os.environ["WALMART_CLIENT_ID"] = "some-client-id"
+        try:
+            with_token = wa._auth_headers(wa.OAUTH_CID, "tok")
+            without = wa._auth_headers(wa.CID, None)
+        finally:
+            del os.environ["WALMART_CLIENT_ID"]
+        self.assertEqual(with_token["WM_CONSUMER.ID"], "some-client-id")
+        self.assertEqual(without["WM_CONSUMER.ID"], "some-client-id")
+        # cid-only must genuinely carry no token, or it tests nothing new.
+        self.assertNotIn("WM_SEC.ACCESS_TOKEN", without)
 
     def test_a_probe_that_throws_does_not_end_the_sweep(self):
         class FakeResp:
