@@ -338,9 +338,17 @@ def shape(node, depth: int = 0, limit: int = 8) -> list[str]:
     return out
 
 
-def probe(token: str) -> int:
-    yesterday = orders.today_et() - timedelta(days=1)
-    start = yesterday - timedelta(days=13)
+def probe(token: str, start: date | None = None, end: date | None = None) -> int:
+    """Show the response shape over a window, defaulting to the last fortnight.
+
+    Range-aware because the first probe came back with an empty fortnight:
+    the envelope confirmed itself, but with no orders in it the line-level
+    field names stayed guesses. Confirming those needs a window with an order
+    in it, wherever that is.
+    """
+    end = end or orders.today_et() - timedelta(days=1)
+    start = start or end - timedelta(days=13)
+    yesterday = end
     sess = net.session()
     resp = sess.get(f"{WALMART_HOST}{ORDERS_PATH}",
                     headers=walmart._headers(token),
@@ -430,7 +438,9 @@ def main() -> int:
 
     token = walmart.get_access_token()
     if args.probe:
-        return probe(token)
+        return probe(token,
+                     date.fromisoformat(args.start) if args.start else None,
+                     date.fromisoformat(args.end) if args.end else None)
 
     if args.start:
         start = date.fromisoformat(args.start)
