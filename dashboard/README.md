@@ -3,7 +3,8 @@
 Sales, Ads and Spend for Silverpot Tea, behind a login, with a Super Admin /
 Admin / Viewer hierarchy and per-user saved views.
 
-Amazon only for now. Walmart is plumbed for in the schema but not ingested.
+Amazon and Walmart sales are both live. Walmart advertising is not: Walmart
+Connect is a separate approval, and is postponed rather than promised.
 
 ## Status
 
@@ -18,7 +19,8 @@ Amazon only for now. Walmart is plumbed for in the schema but not ingested.
 | Frontend: Sales, Ads, Spend, saved views | **built** |
 | Admin UI (people, invites, audit log) | **built** |
 | One-paste Supabase setup | **built and tested** |
-| Walmart ingestion | postponed on purpose (see the end) |
+| Walmart sales ingestion | **built**, and backfilled to the first order |
+| Walmart advertising | postponed on purpose (see the end) |
 
 ## The shape of it
 
@@ -240,12 +242,23 @@ Google Sheets outage, and nothing on the page said so.
 
 ## Not built yet, and deliberately
 
-**Walmart.** Every fact table carries a `marketplace` column and the UI will
-have a switcher, but only Amazon is ingested. Walmart orders are reachable with
-credentials this repository already holds. Walmart Connect, their advertising
-API, is a separate and harder approval, so it is postponed rather than
-promised. Combined Amazon+Walmart views are meant to be impossible, and keeping
+**Walmart advertising.** Walmart *sales* are live: orders come from the
+Marketplace API on the credentials the WFS inventory pull already uses, so
+they needed no new approval and no new secret. Walmart Connect, their
+advertising API, is a separate and harder approval, so it is postponed rather
+than promised.
+
+Combined Amazon+Walmart views are meant to be impossible, and keeping
 `marketplace` on every row and every query is how that stays true.
+
+One thing about Walmart orders is worth knowing before touching that code.
+`/v3/orders` takes a `shipNodeType`, and its **default view does not include
+WFS-fulfilled orders** - which is all of Silverpot's. Confirmed on 2026-09-09
+over a three-month window: the default view returned 0 orders and
+`WFSFulfilled` returned 105. Two probes before that had come back empty and
+looked exactly like a channel with no sales. A run therefore asks for every
+explicit view and merges them; they are disjoint, since an order is fulfilled
+one way.
 
 **Nothing else.** Advertising is now read straight from the Amazon Ads API
 rather than from an exported Google Sheet, which was the earlier plan and the
