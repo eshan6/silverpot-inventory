@@ -77,9 +77,26 @@ PROBES: tuple[tuple[str, str, str, str], ...] = (
     ("Marketplace: report type list", "GET",
      f"{WALMART_HOST}/v3/reports/reportRequests"
      "?reportType=NOT_A_REAL_REPORT_TYPE&reportVersion=v1", OAUTH),
-    ("Marketplace: advertising report", "GET",
-     f"{WALMART_HOST}/v3/reports/reportRequests"
-     "?reportType=ADVERTISING&reportVersion=v1", OAUTH),
+    # Report type names. Settled on 2026-09-09: this endpoint is a perfect
+    # enumeration oracle, because an unknown reportType answers 400 while a
+    # real one answers 200 with a (possibly empty) list of requests. Fourteen
+    # candidates went out. Exactly three exist - PROMO, BUYBOX and
+    # ITEM_PERFORMANCE - and every advertising-flavoured name is invalid:
+    # ADVERTISING, ADS, AD_PERFORMANCE, ADVERTISING_REPORT,
+    # SPONSORED_PRODUCTS, CAMPAIGN, CAMPAIGN_PERFORMANCE, AD_SPEND all 400.
+    # So the Marketplace reports catalogue carries no advertising report, and
+    # that is now measured rather than assumed. PROMO is price promotions and
+    # BUYBOX is buy-box share; neither is ad spend.
+    #
+    # These stay in the sweep because they cost one call each and they are how
+    # a newly added report type gets noticed without anyone re-reading docs.
+    *(("Marketplace: report " + name, "GET",
+       f"{WALMART_HOST}/v3/reports/reportRequests"
+       f"?reportType={name}&reportVersion=v1", OAUTH)
+      for name in ("ADVERTISING", "ADS", "AD_PERFORMANCE", "ADVERTISING_REPORT",
+                   "SPONSORED_PRODUCTS", "CAMPAIGN", "CAMPAIGN_PERFORMANCE",
+                   "AD_SPEND", "PROMO", "PROMOTION", "PERFORMANCE",
+                   "SALES_AND_TRAFFIC", "BUYBOX", "GROWTH")),
     ("Marketplace: item performance", "GET",
      f"{WALMART_HOST}/v3/reports/reportRequests"
      "?reportType=ITEM_PERFORMANCE&reportVersion=v1", OAUTH),
@@ -91,6 +108,19 @@ PROBES: tuple[tuple[str, str, str, str], ...] = (
     ("Marketplace: advertiser", "GET",
      f"{WALMART_HOST}/v3/advertising/advertiser", OAUTH),
     ("Marketplace: ads", "GET", f"{WALMART_HOST}/v3/ads", OAUTH),
+
+    # --- The Growth scope, because the name is worth a live answer ---
+    # This account's key carries fourteen scopes and "Growth" is the only one
+    # whose name does not obviously exclude advertising. Walmart's docs put
+    # Listing Quality and Assortment under it, but the docs have been wrong
+    # about this account three times, so the account gets asked directly.
+    ("Marketplace: growth", "GET", f"{WALMART_HOST}/v3/growth", OAUTH),
+    ("Marketplace: growth opportunities", "GET",
+     f"{WALMART_HOST}/v3/growth/opportunities", OAUTH),
+    ("Marketplace: growth ads", "GET", f"{WALMART_HOST}/v3/growth/ads", OAUTH),
+    ("Marketplace: growth advertising", "GET",
+     f"{WALMART_HOST}/v3/growth/advertising", OAUTH),
+    ("Marketplace: insights", "GET", f"{WALMART_HOST}/v3/insights", OAUTH),
 
     # --- The advertising gateway, under the OAuth token it already refused ---
     ("WPA advertiser (oauth)", "GET", f"{WPA_HOST}/advertiser", OAUTH),
@@ -160,6 +190,23 @@ def _trim(text: str, limit: int = 400) -> str:
     return body[:limit] + ("..." if len(body) > limit else "")
 
 
+def shows_body_when_ok(url: str) -> bool:
+    """Print the body of a 200 from the reports API, not just its status.
+
+    A status code answers "may I", and for every other probe that is the whole
+    question. The reports API is different: it answered 200 on the first sweep
+    and the body was thrown away, when the body is the part that says which
+    reports exist. Asking a catalogue endpoint and discarding the catalogue is
+    not a probe, it is a formality.
+
+    Report-request metadata is job ids, types and dates. No order carries
+    through it, so nothing here can put a customer's name in a public log -
+    unlike the order reports, which is why this is scoped to /reports and not
+    turned on for everything.
+    """
+    return "/v3/reports" in (url or "")
+
+
 def _auth_headers(mode: str, token: str | None, private_key=None) -> dict | None:
     """Headers for one probe, or None if that mode is not available."""
     if mode == NONE:
@@ -215,7 +262,12 @@ def probe(token: str | None, sess=None, private_key=None,
                 params={"limit": 1} if url.endswith("inventory") else None,
                 timeout=net.TIMEOUT)
             record["status"] = resp.status_code
-            record["note"] = "" if resp.status_code == 200 else _trim(resp.text)
+            if resp.status_code != 200:
+                record["note"] = _trim(resp.text)
+            elif shows_body_when_ok(url):
+                record["note"] = _trim(resp.text, 900)
+            else:
+                record["note"] = ""
         except Exception as exc:                            # noqa: BLE001
             record["note"] = net.describe_error(exc)
         out.append(record)
