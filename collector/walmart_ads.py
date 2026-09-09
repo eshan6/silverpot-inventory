@@ -58,8 +58,20 @@ PROBES: tuple[tuple[str, str, str, str], ...] = (
     (CONTROL, "GET", f"{WALMART_HOST}/v3/wfs/inventory", OAUTH),
     ("Marketplace: report requests", "GET",
      f"{WALMART_HOST}/v3/reports/reportRequests", OAUTH),
-    ("Marketplace: available reports", "GET",
-     f"{WALMART_HOST}/v3/reports/available", OAUTH),
+    # A deliberately impossible report type. Walmart's validators tend to
+    # answer an unknown enum by listing the ones it would have accepted, which
+    # enumerates the catalogue for free and without a guess. If an advertising
+    # report is in there, this whole question is answered on credentials the
+    # repository already holds.
+    ("Marketplace: report type list", "GET",
+     f"{WALMART_HOST}/v3/reports/reportRequests"
+     "?reportType=NOT_A_REAL_REPORT_TYPE&reportVersion=v1", OAUTH),
+    ("Marketplace: advertising report", "GET",
+     f"{WALMART_HOST}/v3/reports/reportRequests"
+     "?reportType=ADVERTISING&reportVersion=v1", OAUTH),
+    ("Marketplace: item performance", "GET",
+     f"{WALMART_HOST}/v3/reports/reportRequests"
+     "?reportType=ITEM_PERFORMANCE&reportVersion=v1", OAUTH),
     ("Marketplace: insights item perf", "GET",
      f"{WALMART_HOST}/v3/insights/items/performance", OAUTH),
     ("Marketplace: SEM campaigns", "GET", f"{WALMART_HOST}/v3/sem/campaigns", OAUTH),
