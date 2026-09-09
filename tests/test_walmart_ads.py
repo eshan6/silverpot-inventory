@@ -31,8 +31,12 @@ def rec(label, status=404, note="", mode=wa.OAUTH, skipped=False):
     return r
 
 
-def results(control=200, *extra):
-    return [rec(CONTROL, control), *extra]
+def results(control=200, *extra, signed_control=None):
+    """A sweep. The signed control defaults to skipped, as it is unconfigured."""
+    sc = (rec(wa.SIGNED_CONTROL, skipped=True, mode=wa.SIGNED)
+          if signed_control is None
+          else rec(wa.SIGNED_CONTROL, signed_control, mode=wa.SIGNED))
+    return [rec(CONTROL, control), sc, *extra]
 
 
 class TestVerdict(unittest.TestCase):
@@ -96,6 +100,36 @@ class TestVerdict(unittest.TestCase):
             rec("WPA advertiser (signed)", skipped=True, mode=wa.SIGNED))))
         self.assertIn("Consumer IDs & Private Keys", said)
         self.assertIn("skipped", said.lower())
+
+    def test_a_bad_signature_is_diagnosed_before_anything_it_was_used_for(self):
+        # The point of the signed control. If Walmart rejects our signature on
+        # an endpoint we demonstrably reach with OAuth, then every signed
+        # result in the sweep is meaningless and none of them says anything
+        # about advertising. Reporting them anyway would send someone off to
+        # apply for access to fix a bug that lives in this repository.
+        said = " ".join(wa.verdict(results(
+            200,
+            rec("WPA advertiser (signed)", 401, "Invalid signature",
+                mode=wa.SIGNED),
+            signed_control=401)))
+        self.assertIn("our signature is not valid", said)
+        self.assertIn("no approval would change any of this", said)
+        self.assertNotIn("genuinely refused", said)
+
+    def test_a_working_signature_lets_the_real_verdict_through(self):
+        # The control must gate the reasoning, not replace it.
+        said = " ".join(wa.verdict(results(
+            200,
+            rec("WPA advertiser (signed)", 403, "Not authorized", mode=wa.SIGNED),
+            signed_control=200)))
+        self.assertNotIn("our signature is not valid", said)
+        self.assertIn("genuinely refused", said)
+
+    def test_a_signed_control_that_answers_is_not_counted_as_a_route(self):
+        # It is a control, not a finding. Reporting "there is a route" because
+        # WFS inventory answered would be triumphantly meaningless.
+        said = " ".join(wa.verdict(results(200, signed_control=200)))
+        self.assertNotIn("there is a route", said)
 
     def test_404s_say_nothing_either_way(self):
         said = " ".join(wa.verdict(results(200, rec("Marketplace: ads", 404))))
