@@ -233,10 +233,22 @@ def _pick(row: dict, names: tuple[str, ...]) -> str:
     return ""
 
 
-def _create_report(sess, access_token: str, report_type: str) -> str:
+def _create_report(sess, access_token: str, report_type: str,
+                   start: str | None = None, end: str | None = None) -> str:
+    """Ask for a report, optionally over a date range.
+
+    Inventory reports are a snapshot and take no range. Order reports take
+    one, which is what makes them worth a great deal: a single request covers
+    a month of history, where the Orders API spends one throttled call per
+    day.
+    """
+    body = {"reportType": report_type, "marketplaceIds": [US_MARKETPLACE_ID]}
+    if start:
+        body["dataStartTime"] = start
+    if end:
+        body["dataEndTime"] = end
     resp = _request(
-        sess, "POST", access_token, f"{REPORTS_PATH}/reports",
-        json={"reportType": report_type, "marketplaceIds": [US_MARKETPLACE_ID]},
+        sess, "POST", access_token, f"{REPORTS_PATH}/reports", json=body,
     )
     report_id = resp.json().get("reportId")
     if not report_id:
