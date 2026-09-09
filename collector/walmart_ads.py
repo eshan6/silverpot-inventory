@@ -46,6 +46,7 @@ WPA_HOST = "https://developer.api.walmart.com/api-proxy/service/WPA/Api/v1"
 OAUTH, SIGNED, NONE = "oauth", "signed", "none"
 
 CONTROL = "Control: WFS inventory"
+SIGNED_CONTROL = "Control: WFS inventory, signed"
 
 # Every candidate worth asking, with the credential each is asked under.
 #
@@ -83,6 +84,16 @@ PROBES: tuple[tuple[str, str, str, str], ...] = (
 
     # --- The advertising gateway, under the OAuth token it already refused ---
     ("WPA advertiser (oauth)", "GET", f"{WPA_HOST}/advertiser", OAUTH),
+
+    # --- Is our signature itself any good? ---
+    # The same endpoint as the OAuth control, signed instead. Walmart's legacy
+    # scheme is accepted on the marketplace host, so this separates two
+    # failures that otherwise look identical: a signature this repository
+    # builds wrongly, and an advertising gateway that refuses sellers. Without
+    # it, one failed signed probe against WPA means either and we cannot tell
+    # which - and telling someone to go and apply for access when the bug is
+    # ours is the exact mistake this module has already made twice.
+    (SIGNED_CONTROL, "GET", f"{WALMART_HOST}/v3/wfs/inventory", SIGNED),
 
     # --- The advertising gateway, signed. The route this is really testing ---
     ("WPA advertiser (signed)", "GET", f"{WPA_HOST}/advertiser", SIGNED),
@@ -178,7 +189,10 @@ def verdict(results: list[dict]) -> list[str]:
     """
     by = {r["label"]: r for r in results}
     control = by.get(CONTROL, {}).get("status")
-    ads = [r for r in results if r["label"] != CONTROL and not r.get("skipped")]
+    signed_control = by.get(SIGNED_CONTROL, {})
+    controls = {CONTROL, SIGNED_CONTROL}
+    ads = [r for r in results
+           if r["label"] not in controls and not r.get("skipped")]
     skipped = [r for r in results if r.get("skipped")]
 
     if control != 200:
@@ -186,6 +200,27 @@ def verdict(results: list[dict]) -> list[str]:
             "VERDICT: inconclusive. The control endpoint did not answer either,",
             f"so this run proves nothing about advertising (control: HTTP {control}).",
             "Check the credentials and the network, then run it again.",
+        ]
+
+    # The signature is judged before anything it was used for. A signed probe
+    # failing means nothing about advertising until we know Walmart accepts
+    # our signature somewhere, and the endpoint we already reach is where to
+    # find that out.
+    if not signed_control.get("skipped") and signed_control.get("status") not in (
+            None, 200):
+        return [
+            "VERDICT: our signature is not valid, so every signed result below",
+            f"is meaningless (signed control: HTTP {signed_control.get('status')}).",
+            "",
+            "That control is an endpoint we reach fine with the OAuth token, so",
+            "the endpoint is not the problem and neither is advertising access.",
+            "The fault is in this repository or in the key: canonical string,",
+            "key version, a clock far out of step, or a key pasted incomplete.",
+            "",
+            f"   {_trim(signed_control.get('note') or '', 200)}",
+            "",
+            "Fix that first. Nothing about Walmart advertising has been tested",
+            "yet, and no approval would change any of this.",
         ]
 
     reachable = sorted(r["label"] for r in ads if r["status"] == 200)
