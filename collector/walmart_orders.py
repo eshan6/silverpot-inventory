@@ -74,6 +74,17 @@ UNCOUNTED_STATUSES = frozenset({"Cancelled", "Canceled"})
 # The charge that is the item's own price, as opposed to shipping or tax.
 PRODUCT_CHARGE_TYPES = frozenset({"PRODUCT", "ITEM"})
 
+# How an order was fulfilled. This matters more than it looks: two probes
+# against the live account returned zero orders - one over a fortnight, one
+# over eight months - while WFS held stock the whole time, which points at the
+# default view of /v3/orders not including WFS-fulfilled orders rather than at
+# an absence of sales. Silverpot sells through WFS, so asking for the wrong
+# view means a permanently empty Walmart tab that never errors.
+#
+# The probe asks Walmart which view holds the orders rather than this file
+# asserting it.
+SHIP_NODE_TYPES = (None, "WFSFulfilled", "SellerFulfilled", "3PLFulfilled")
+
 
 def _first(node: dict, names: tuple[str, ...]):
     """The first present, non-empty value among `names`, case-insensitively."""
@@ -260,7 +271,8 @@ def _stamp(day: date, end_of_day: bool = False) -> str:
     return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def fetch_range(token: str, start: date, end: date, sess=None) -> list[dict]:
+def fetch_range(token: str, start: date, end: date, sess=None,
+                ship_node_type: str | None = None) -> list[dict]:
     """Every order created between two Eastern days, following the cursor."""
     sess = sess or net.session()
     params = {
@@ -268,6 +280,8 @@ def fetch_range(token: str, start: date, end: date, sess=None) -> list[dict]:
         "createdEndDate": _stamp(end, end_of_day=True),
         "limit": "200",
     }
+    if ship_node_type:
+        params["shipNodeType"] = ship_node_type
     url = f"{WALMART_HOST}{ORDERS_PATH}"
     rows: list[dict] = []
     pages = 0
@@ -350,6 +364,30 @@ def probe(token: str, start: date | None = None, end: date | None = None) -> int
     start = start or end - timedelta(days=13)
     yesterday = end
     sess = net.session()
+
+    # Which view holds the orders? Asked, not assumed.
+    print(f"Order counts by fulfilment view, {start}..{yesterday}:")
+    best: str | None = None
+    for node_type in SHIP_NODE_TYPES:
+        params = {"createdStartDate": _stamp(start),
+                  "createdEndDate": _stamp(yesterday, end_of_day=True),
+                  "limit": "200"}
+        if node_type:
+            params["shipNodeType"] = node_type
+        try:
+            probe_resp = sess.get(f"{WALMART_HOST}{ORDERS_PATH}",
+                                  headers=walmart._headers(token),
+                                  params=params, timeout=net.TIMEOUT)
+            if probe_resp.status_code >= 400:
+                print(f"  {node_type or '(default)':<16} HTTP {probe_resp.status_code}")
+                continue
+            found = len(order_records(probe_resp.json() or {}))
+            print(f"  {node_type or '(default)':<16} {found} order(s)")
+            if found and best is None:
+                best = node_type or "(default)"
+        except Exception as exc:  # noqa: BLE001
+            print(f"  {node_type or '(default)':<16} {net.describe_error(exc)}")
+    print(f"  -> orders are visible under: {best or 'NONE of these views'}\n")
     resp = sess.get(f"{WALMART_HOST}{ORDERS_PATH}",
                     headers=walmart._headers(token),
                     params={"createdStartDate": _stamp(start),
