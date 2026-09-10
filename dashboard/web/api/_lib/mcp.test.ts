@@ -136,3 +136,41 @@ test("the redirect allow-list accepts Claude and refuses lookalikes", async () =
     assert.equal(redirectAllowed(bad), false, `should refuse ${bad}`);
   }
 });
+
+test("every file Vercel will treat as a function is actually one", async () => {
+  // Vercel turns each file directly under api/ into a deployed function unless
+  // its name starts with an underscore. A helper or a .d.ts left at that level
+  // is built as an entrypoint, has no handler, and fails the deploy - while CI
+  // stays green, because nothing in the test suite or the typecheck notices.
+  // That happened once (api/env.d.ts), so it is pinned rather than remembered.
+  const { readdir } = await import("node:fs/promises");
+  const { readFile } = await import("node:fs/promises");
+  const path = await import("node:path");
+
+  const root = path.join(import.meta.dirname, "..");
+  const walk = async (dir: string): Promise<string[]> => {
+    const out: string[] = [];
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith("_")) continue; // ignored by Vercel
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) out.push(...(await walk(full)));
+      else out.push(full);
+    }
+    return out;
+  };
+
+  const routed = await walk(root);
+  assert.ok(routed.length > 0, "expected some function files");
+  for (const file of routed) {
+    assert.ok(
+      file.endsWith(".ts") && !file.endsWith(".d.ts"),
+      `${file} would be deployed as a function but is not a .ts module`,
+    );
+    const source = await readFile(file, "utf8");
+    assert.match(
+      source,
+      /export default (async )?function/,
+      `${file} would be deployed as a function but exports no default handler`,
+    );
+  }
+});
