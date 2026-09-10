@@ -16,7 +16,7 @@
 // aggregate figures that every role can already read. If per-user connector
 // access is ever wanted, that is a real feature, not a tweak here.
 
-import { insert, patch, select } from "./db.ts";
+import { insert, patch, select } from "./db.js";
 
 const PASSWORD_ENV = "MCP_ACCESS_PASSWORD";
 

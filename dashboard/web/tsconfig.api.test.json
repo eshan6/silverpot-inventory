@@ -1,0 +1,15 @@
+{
+  "//": "Emits the functions to .api-build so node --test can run them. The shipped code keeps standard .js import specifiers; this is what makes them runnable without a bundler.",
+  "extends": "./tsconfig.api.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": ".api-build",
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "api"
+  ],
+  "exclude": []
+}

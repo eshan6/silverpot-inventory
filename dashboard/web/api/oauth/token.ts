@@ -4,7 +4,7 @@
 // the body arrives as application/x-www-form-urlencoded, and errors come back
 // as the documented `error` codes rather than prose. Both are honoured here.
 
-import { findClient, issueTokens, redeemCode, refresh } from "../_lib/oauth.ts";
+import { findClient, issueTokens, redeemCode, refresh } from "../_lib/oauth.js";
 
 export const config = { runtime: "edge" };
 

@@ -6,8 +6,8 @@
 // form is even shown, so a malformed flow fails on a page that explains why
 // rather than after someone has typed a password.
 
-import { findClient, issueCode, passwordConfigured, passwordMatches } from "../_lib/oauth.ts";
-import { missingEnv } from "../_lib/db.ts";
+import { findClient, issueCode, passwordConfigured, passwordMatches } from "../_lib/oauth.js";
+import { missingEnv } from "../_lib/db.js";
 
 export const config = { runtime: "edge" };
 

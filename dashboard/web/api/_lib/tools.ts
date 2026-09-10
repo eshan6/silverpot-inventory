@@ -15,7 +15,7 @@
 // means "no sales" or "the pipeline did not run", and this project has
 // already published stale numbers once without saying so.
 
-import { select } from "./db.ts";
+import { select } from "./db.js";
 
 const ROW_CAP = 20000;
 const MARKETPLACES = ["amazon", "walmart"] as const;

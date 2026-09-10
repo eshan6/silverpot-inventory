@@ -10,9 +10,9 @@
 // to the open internet, because a misconfigured deploy must not be an open
 // one.
 
-import { bearerFrom, originOf, passwordConfigured, verifyAccessToken } from "./_lib/oauth.ts";
-import { callTool, TOOLS, ToolError } from "./_lib/tools.ts";
-import { missingEnv } from "./_lib/db.ts";
+import { bearerFrom, originOf, passwordConfigured, verifyAccessToken } from "./_lib/oauth.js";
+import { callTool, TOOLS, ToolError } from "./_lib/tools.js";
+import { missingEnv } from "./_lib/db.js";
 
 export const config = { runtime: "edge" };
 

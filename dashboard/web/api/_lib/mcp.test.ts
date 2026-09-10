@@ -12,8 +12,8 @@ import test from "node:test";
 
 process.env["MCP_ACCESS_PASSWORD"] = "correct horse battery staple";
 
-const { passwordMatches, pkceMatches, sha256, base64url } = await import("./oauth.ts");
-const { TOOLS, ToolError } = await import("./tools.ts");
+const { passwordMatches, pkceMatches, sha256, base64url } = await import("./oauth.js");
+const { TOOLS, ToolError } = await import("./tools.js");
 
 test("the password compare accepts only the exact password", () => {
   assert.equal(passwordMatches("correct horse battery staple"), true);
@@ -78,7 +78,7 @@ test("no tool offers a write or a free-text query", () => {
 });
 
 test("ToolError is thrown for a date that is not a date", async () => {
-  const { callTool } = await import("./tools.ts");
+  const { callTool } = await import("./tools.js");
   await assert.rejects(
     () => callTool("sales_summary", { from: "last tuesday", to: "2026-01-01" }),
     (err: unknown) => err instanceof ToolError,
@@ -92,7 +92,7 @@ test("ToolError is thrown for a date that is not a date", async () => {
 });
 
 test("a backwards range is refused rather than silently returning nothing", async () => {
-  const { callTool } = await import("./tools.ts");
+  const { callTool } = await import("./tools.js");
   await assert.rejects(
     () => callTool("sales_summary", { from: "2026-06-01", to: "2026-01-01" }),
     (err: unknown) => err instanceof ToolError,
@@ -100,7 +100,7 @@ test("a backwards range is refused rather than silently returning nothing", asyn
 });
 
 test("an unknown marketplace is refused", async () => {
-  const { callTool } = await import("./tools.ts");
+  const { callTool } = await import("./tools.js");
   await assert.rejects(
     () => callTool("sales_summary", {
       from: "2026-01-01", to: "2026-02-01", marketplace: "ebay",
@@ -110,7 +110,7 @@ test("an unknown marketplace is refused", async () => {
 });
 
 test("an unknown tool name is refused", async () => {
-  const { callTool } = await import("./tools.ts");
+  const { callTool } = await import("./tools.js");
   await assert.rejects(
     () => callTool("drop_everything", {}),
     (err: unknown) => err instanceof ToolError,
@@ -118,7 +118,7 @@ test("an unknown tool name is refused", async () => {
 });
 
 test("the redirect allow-list accepts Claude and refuses lookalikes", async () => {
-  const { redirectAllowed } = await import("../oauth/register.ts");
+  const { redirectAllowed } = await import("../oauth/register.js");
   assert.equal(redirectAllowed("https://claude.ai/api/mcp/auth_callback"), true);
   assert.equal(redirectAllowed("https://console.anthropic.com/cb"), true);
 
@@ -147,7 +147,8 @@ test("every file Vercel will treat as a function is actually one", async () => {
   const { readFile } = await import("node:fs/promises");
   const path = await import("node:path");
 
-  const root = path.join(import.meta.dirname, "..");
+  // Compiled to .api-build/_lib, so the real sources are two levels up.
+  const root = path.join(import.meta.dirname, "..", "..", "api");
   const walk = async (dir: string): Promise<string[]> => {
     const out: string[] = [];
     for (const entry of await readdir(dir, { withFileTypes: true })) {

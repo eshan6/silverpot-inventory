@@ -10,8 +10,8 @@
 // redirect would let someone start a flow that mails the code elsewhere, so
 // only Claude's callbacks are accepted.
 
-import { insert } from "../_lib/db.ts";
-import { randomSecret } from "../_lib/oauth.ts";
+import { insert } from "../_lib/db.js";
+import { randomSecret } from "../_lib/oauth.js";
 
 export const config = { runtime: "edge" };
 
