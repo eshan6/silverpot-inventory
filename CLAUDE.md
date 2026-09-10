@@ -108,6 +108,9 @@ collector/
 sku_map.csv    the identity layer - 36 rows, hand-maintained
 public/        static storefront dashboard + inventory.json feed
 dashboard/     the internal Sales/Ads/Spend app: Postgres schema + React SPA
+dashboard/web/api/  the MCP connector: OAuth + six read-only tools over the
+               dashboard's Postgres. The only server-side code in the project;
+               nothing else depends on it. See dashboard/README.md.
 tests/         payload-shape tests; no credentials, no network
 .github/workflows/inventory.yml   daily cron 05:13 UTC + 13:43 safety net
 .github/workflows/dashboard.yml   sales into the dashboard: 06:07 + 14:37

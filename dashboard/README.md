@@ -22,6 +22,7 @@ issuing.
 | Frontend: Sales, Ads, Spend, saved views | **built** |
 | Admin UI (people, invites, audit log) | **built** |
 | One-paste Supabase setup | **built and tested** |
+| MCP connector for Claude | **built and tested** (OAuth, six read-only tools) |
 | Walmart sales ingestion | **built**, and backfilled to the first order |
 | Walmart advertising | **no route** — measured, not assumed; see the end |
 
@@ -37,10 +38,17 @@ Four decisions worth knowing about, because they are why this is free and why
 the host barely matters.
 
 **The frontend is a static SPA with no server of its own.** Auth, data and
-authorisation all come from Supabase; ingestion runs in GitHub Actions. That
-means no serverless functions on the hosting side, so the same build deploys
-unchanged to Cloudflare Pages, Netlify or Vercel. Hosting becomes a ten-minute
-decision you can reverse, not an architectural commitment.
+authorisation all come from Supabase; ingestion runs in GitHub Actions. The
+same build deploys unchanged to Cloudflare Pages, Netlify or Vercel, so hosting
+is a ten-minute decision you can reverse rather than an architectural
+commitment.
+
+One exception, added deliberately and kept apart: the **MCP connector** under
+`dashboard/web/api/` is three serverless functions, because Anthropic's
+infrastructure has to be able to call it and a static file cannot answer a
+JSON-RPC POST. Nothing else depends on them - delete the directory and the
+dashboard and storefront are untouched - so the portability above survives with
+one asterisk: a host without functions loses the connector, not the app.
 
 **Ingestion reuses the inventory collector's credentials.** `LWA_CLIENT_ID`,
 `LWA_CLIENT_SECRET` and `LWA_REFRESH_TOKEN` are already GitHub Actions secrets
@@ -188,6 +196,75 @@ quietly wrong:
   caught and reported rather than failing the job.
 
 `--no-backfill` on either command re-reads the trailing window only.
+
+## Reading it from Claude (MCP connector)
+
+The dashboard also serves an MCP endpoint, so Claude can answer questions
+against the real figures instead of a pasted screenshot:
+
+    https://<your-vercel-domain>/api/mcp
+
+Add it in Claude under Settings -> Connectors -> Add custom connector. Claude
+registers itself, sends you to a page asking for one password, and from then on
+can call six read-only tools: `sales_summary`, `sales_by_sku`,
+`sales_timeseries`, `ads_summary`, `spend_summary` and `data_freshness`.
+
+**This is the one part of the design with a server.** Everything else is a
+static SPA on purpose, and that has not changed - the storefront and the
+dashboard UI still have no backend. But an MCP connector is called by
+Anthropic's infrastructure rather than by your browser, so it has to be a
+public HTTPS endpoint that something answers. That is three Vercel functions
+under `dashboard/web/api/`, and nothing else in the project depends on them.
+
+### What guards it
+
+A public URL that reads internal sales figures is worth being careful about,
+so:
+
+- **OAuth, because there is no alternative.** Claude's connector UI has no
+  field for a static bearer token, so the dashboard is an OAuth authorization
+  server too. Codes and tokens are random 256-bit values stored only as
+  SHA-256 hashes; codes are single-use and expire in ten minutes; PKCE S256 is
+  verified.
+- **It fails closed.** With `MCP_ACCESS_PASSWORD` unset, every request is
+  refused. A half-configured deploy serves nothing rather than everything.
+- **Registration is open; redirects are not.** A client id is not a
+  credential, so anyone may register one - but only `https` callbacks on
+  `claude.ai`, `claude.com` and `console.anthropic.com` are accepted, which is
+  what stops someone starting a flow that mails the code elsewhere. The
+  lookalike cases (`claude.ai.evil.com`, `notclaude.ai`, the domain in a query
+  string) are each a test.
+- **Read-only, and narrow.** Six tools over `sales_daily`, `ads_daily`,
+  `spend_daily` and `ingest_runs`. There is no write path and no free-text
+  query tool - a `run_query` would hand anyone who got in the roster, the
+  invites and the audit log. A test asserts no tool name looks like a write.
+- **Its tables are service-role only.** `mcp_clients`, `mcp_auth_codes` and
+  `mcp_tokens` have RLS enabled and no policy, which in Postgres means deny.
+  The anon key the browser holds reads none of it.
+
+Revoking every connector session is one statement:
+
+```sql
+update public.mcp_tokens set revoked_at = now() where revoked_at is null;
+```
+
+Claude then re-runs the flow and asks for the password again.
+
+### Setting it up
+
+The schema comes from `setup.sql` (migration `0004_mcp.sql` is already in it).
+Then add three environment variables in Vercel - Project -> Settings ->
+Environment Variables:
+
+| Variable | Value |
+|---|---|
+| `DASHBOARD_SUPABASE_URL` | the same project URL the sync jobs use |
+| `DASHBOARD_SUPABASE_SERVICE_KEY` | the same service key |
+| `MCP_ACCESS_PASSWORD` | a long random password you invent |
+
+The service key is in Vercel because the connector reads on behalf of whoever
+holds the password rather than a logged-in Supabase user. It stays server-side:
+no function returns it and the browser bundle never sees it.
 
 ## Adding people
 
