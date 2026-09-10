@@ -1,0 +1,28 @@
+{
+  "//": "The serverless functions. Separate from tsconfig.json because they run on Vercel's edge runtime with Web APIs and no DOM, while the SPA is the other way round. Both are checked by `npm run build`.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "WebWorker"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": []
+  },
+  "include": [
+    "api"
+  ],
+  "//tests": "Test files are excluded: they import node: builtins, and adding @types/node here would also pull Node's fetch/Request/Response types over the Web ones these functions actually run against. The tests are executed by `npm run test:api`, which is a stronger check than compiling them.",
+  "exclude": [
+    "api/**/*.test.ts"
+  ]
+}
