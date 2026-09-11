@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-10T09:38:11+00:00",
+  "generated_at": "2026-09-11T09:35:25+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 37,
+      "available": 38,
       "in_stock": true,
-      "fba": 32,
+      "fba": 33,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 15.2,
+      "days_of_cover": 14.2,
       "inbound": 0
     },
     {
@@ -196,12 +196,12 @@
       "sku": "IP-PY08-5BTO",
       "asin": "B0DLTHPR2M",
       "website_product_id": "",
-      "available": 24,
+      "available": 23,
       "in_stock": true,
       "fba": 0,
-      "wfs": 24,
+      "wfs": 23,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 184.0,
       "inbound": 0
     },
     {
@@ -226,12 +226,12 @@
       "sku": "3I-BITV-OM1V",
       "asin": "B0DLTZ3QT7",
       "website_product_id": "",
-      "available": 17,
+      "available": 16,
       "in_stock": true,
-      "fba": 17,
+      "fba": 16,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 128.0,
       "inbound": 0
     },
     {
@@ -301,9 +301,9 @@
       "sku": "TG-34ZG-5OMZ",
       "asin": "B0DLTZBL9P",
       "website_product_id": "",
-      "available": 16,
+      "available": 17,
       "in_stock": true,
-      "fba": 16,
+      "fba": 17,
       "wfs": 0,
       "buffer": 0,
       "days_of_cover": null,
@@ -321,7 +321,7 @@
       "fba": 29,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": 129.5,
+      "days_of_cover": 148.0,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 40,
+      "available": 39,
       "in_stock": true,
-      "fba": 40,
+      "fba": 39,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 45.7,
+      "days_of_cover": 39.0,
       "inbound": 0
     },
     {
@@ -421,12 +421,12 @@
       "sku": "US-ASRC-EUHM",
       "asin": "B0DLWTFRJ9",
       "website_product_id": "",
-      "available": 3,
+      "available": 2,
       "in_stock": true,
-      "fba": 3,
+      "fba": 2,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 24.0,
+      "days_of_cover": 8.0,
       "inbound": 0
     },
     {
