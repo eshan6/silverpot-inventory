@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-12T09:14:04+00:00",
+  "generated_at": "2026-09-13T10:11:14+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 38,
+      "available": 37,
       "in_stock": true,
-      "fba": 33,
+      "fba": 32,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 16.3,
+      "days_of_cover": 17.3,
       "inbound": 0
     },
     {
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 46,
+      "available": 47,
       "in_stock": true,
-      "fba": 46,
+      "fba": 47,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 80.5,
+      "days_of_cover": 70.5,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 39,
+      "available": 37,
       "in_stock": true,
-      "fba": 39,
+      "fba": 37,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 52.0,
+      "days_of_cover": 42.3,
       "inbound": 0
     },
     {
@@ -466,12 +466,12 @@
       "sku": "Y5-C6HY-68LV",
       "asin": "B0DLWTG5XN",
       "website_product_id": "",
-      "available": 17,
+      "available": 16,
       "in_stock": true,
       "fba": 12,
-      "wfs": 5,
+      "wfs": 4,
       "buffer": 0,
-      "days_of_cover": 119.0,
+      "days_of_cover": 64.0,
       "inbound": 0
     },
     {
@@ -511,12 +511,12 @@
       "sku": "X4-NBPO-69NU",
       "asin": "",
       "website_product_id": "",
-      "available": 184,
+      "available": 182,
       "in_stock": true,
-      "fba": 100,
-      "wfs": 84,
+      "fba": 99,
+      "wfs": 83,
       "buffer": 0,
-      "days_of_cover": 490.7,
+      "days_of_cover": 291.2,
       "inbound": 0
     },
     {
@@ -526,12 +526,12 @@
       "sku": "M6-VQP9-KZDY",
       "asin": "",
       "website_product_id": "",
-      "available": 138,
+      "available": 136,
       "in_stock": true,
-      "fba": 109,
+      "fba": 107,
       "wfs": 29,
       "buffer": 0,
-      "days_of_cover": 966.0,
+      "days_of_cover": 317.3,
       "inbound": 0
     },
     {
@@ -546,7 +546,7 @@
       "fba": 141,
       "wfs": 28,
       "buffer": 0,
-      "days_of_cover": 450.7,
+      "days_of_cover": null,
       "inbound": 0
     }
   ]
