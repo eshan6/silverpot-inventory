@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T10:33:22+00:00",
+  "generated_at": "2026-09-15T10:00:34+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 36,
+      "available": 37,
       "in_stock": true,
-      "fba": 31,
+      "fba": 32,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 15.8,
+      "days_of_cover": 13.9,
       "inbound": 0
     },
     {
@@ -241,12 +241,12 @@
       "sku": "LW-IYO9-UF6F",
       "asin": "B0DLV19X7Y",
       "website_product_id": "",
-      "available": 5,
+      "available": 4,
       "in_stock": true,
       "fba": 0,
-      "wfs": 5,
+      "wfs": 4,
       "buffer": 0,
-      "days_of_cover": 35.0,
+      "days_of_cover": 14.0,
       "inbound": 0
     },
     {
@@ -276,7 +276,7 @@
       "fba": 47,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 82.2,
+      "days_of_cover": 164.5,
       "inbound": 0
     },
     {
@@ -316,12 +316,12 @@
       "sku": "9J-T8HS-C66T",
       "asin": "B0DLV1PB82",
       "website_product_id": "",
-      "available": 37,
+      "available": 36,
       "in_stock": true,
-      "fba": 29,
+      "fba": 28,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 288.0,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 35,
+      "available": 34,
       "in_stock": true,
-      "fba": 35,
+      "fba": 34,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 35.0,
+      "days_of_cover": 34.0,
       "inbound": 0
     },
     {
@@ -501,7 +501,7 @@
       "fba": 112,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 112.0,
+      "days_of_cover": 130.7,
       "inbound": 0
     },
     {
@@ -511,12 +511,12 @@
       "sku": "X4-NBPO-69NU",
       "asin": "",
       "website_product_id": "",
-      "available": 182,
+      "available": 181,
       "in_stock": true,
       "fba": 99,
-      "wfs": 83,
+      "wfs": 82,
       "buffer": 0,
-      "days_of_cover": 291.2,
+      "days_of_cover": 289.6,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 106,
       "wfs": 29,
       "buffer": 0,
-      "days_of_cover": 236.2,
+      "days_of_cover": 315.0,
       "inbound": 0
     },
     {
