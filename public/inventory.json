@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-15T10:00:34+00:00",
+  "generated_at": "2026-09-16T09:52:48+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -21,7 +21,7 @@
       "fba": 32,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 13.9,
+      "days_of_cover": 22.2,
       "inbound": 0
     },
     {
@@ -261,7 +261,7 @@
       "fba": 0,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 0.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 34,
+      "available": 35,
       "in_stock": true,
-      "fba": 34,
+      "fba": 35,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 34.0,
+      "days_of_cover": 30.6,
       "inbound": 0
     },
     {
@@ -391,12 +391,12 @@
       "sku": "LC-V1UX-GB2V",
       "asin": "B0DLWTCTQX",
       "website_product_id": "",
-      "available": 34,
+      "available": 33,
       "in_stock": true,
-      "fba": 26,
+      "fba": 25,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 264.0,
       "inbound": 0
     },
     {
@@ -501,7 +501,7 @@
       "fba": 112,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 130.7,
+      "days_of_cover": 149.3,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 99,
       "wfs": 82,
       "buffer": 0,
-      "days_of_cover": 289.6,
+      "days_of_cover": 362.0,
       "inbound": 0
     },
     {
