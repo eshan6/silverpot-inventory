@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-16T09:52:48+00:00",
+  "generated_at": "2026-09-17T09:56:58+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 37,
+      "available": 32,
       "in_stock": true,
-      "fba": 32,
+      "fba": 27,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 22.2,
+      "days_of_cover": 21.3,
       "inbound": 0
     },
     {
@@ -246,7 +246,7 @@
       "fba": 0,
       "wfs": 4,
       "buffer": 0,
-      "days_of_cover": 14.0,
+      "days_of_cover": 28.0,
       "inbound": 0
     },
     {
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 47,
+      "available": 46,
       "in_stock": true,
-      "fba": 47,
+      "fba": 46,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 164.5,
+      "days_of_cover": 161.0,
       "inbound": 0
     },
     {
@@ -366,7 +366,7 @@
       "fba": 20,
       "wfs": 3,
       "buffer": 0,
-      "days_of_cover": 92.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 35,
+      "available": 34,
       "in_stock": true,
-      "fba": 35,
+      "fba": 34,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 30.6,
+      "days_of_cover": 29.8,
       "inbound": 0
     },
     {
@@ -426,7 +426,7 @@
       "fba": 2,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 8.0,
+      "days_of_cover": 16.0,
       "inbound": 0
     },
     {
@@ -441,7 +441,7 @@
       "fba": 41,
       "wfs": 18,
       "buffer": 0,
-      "days_of_cover": 472.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -471,7 +471,7 @@
       "fba": 12,
       "wfs": 4,
       "buffer": 0,
-      "days_of_cover": 64.0,
+      "days_of_cover": 128.0,
       "inbound": 0
     },
     {
@@ -496,12 +496,12 @@
       "sku": "SE-3UPE-IO7M",
       "asin": "",
       "website_product_id": "",
-      "available": 112,
+      "available": 108,
       "in_stock": true,
-      "fba": 112,
+      "fba": 108,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 149.3,
+      "days_of_cover": 216.0,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 99,
       "wfs": 82,
       "buffer": 0,
-      "days_of_cover": 362.0,
+      "days_of_cover": 482.7,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 106,
       "wfs": 29,
       "buffer": 0,
-      "days_of_cover": 315.0,
+      "days_of_cover": 360.0,
       "inbound": 0
     },
     {
