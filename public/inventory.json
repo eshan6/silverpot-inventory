@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-17T09:56:58+00:00",
+  "generated_at": "2026-09-18T09:40:04+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 32,
+      "available": 30,
       "in_stock": true,
-      "fba": 27,
+      "fba": 25,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 21.3,
+      "days_of_cover": 20.0,
       "inbound": 0
     },
     {
@@ -246,7 +246,7 @@
       "fba": 0,
       "wfs": 4,
       "buffer": 0,
-      "days_of_cover": 28.0,
+      "days_of_cover": 32.0,
       "inbound": 0
     },
     {
@@ -276,7 +276,7 @@
       "fba": 46,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 161.0,
+      "days_of_cover": 322.0,
       "inbound": 0
     },
     {
@@ -346,12 +346,12 @@
       "sku": "T0-3BW2-ZJ6Y",
       "asin": "B0DLV1RSYX",
       "website_product_id": "",
-      "available": 1,
-      "in_stock": true,
+      "available": 0,
+      "in_stock": false,
       "fba": 0,
-      "wfs": 1,
+      "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 0.0,
       "inbound": 0
     },
     {
@@ -381,7 +381,7 @@
       "fba": 34,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 29.8,
+      "days_of_cover": 34.0,
       "inbound": 0
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 168,
+      "available": 167,
       "in_stock": true,
-      "fba": 140,
+      "fba": 139,
       "wfs": 28,
       "buffer": 0,
-      "days_of_cover": 1344.0,
+      "days_of_cover": 668.0,
       "inbound": 0
     }
   ]
