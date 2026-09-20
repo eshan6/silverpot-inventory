@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-19T09:26:05+00:00",
+  "generated_at": "2026-09-20T09:45:08+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -121,12 +121,12 @@
       "sku": "UZ-LPS9-WKKW",
       "asin": "B0DLTGRYKT",
       "website_product_id": "",
-      "available": 31,
+      "available": 29,
       "in_stock": true,
-      "fba": 20,
+      "fba": 18,
       "wfs": 11,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 116.0,
       "inbound": 0
     },
     {
@@ -231,7 +231,7 @@
       "fba": 15,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 120.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 45,
+      "available": 44,
       "in_stock": true,
-      "fba": 45,
+      "fba": 44,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 157.5,
+      "days_of_cover": 102.7,
       "inbound": 12
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 33,
+      "available": 31,
       "in_stock": true,
-      "fba": 33,
+      "fba": 31,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 33.0,
+      "days_of_cover": 24.1,
       "inbound": 12
     },
     {
@@ -526,12 +526,12 @@
       "sku": "M6-VQP9-KZDY",
       "asin": "",
       "website_product_id": "",
-      "available": 135,
+      "available": 136,
       "in_stock": true,
-      "fba": 106,
+      "fba": 107,
       "wfs": 29,
       "buffer": 0,
-      "days_of_cover": 360.0,
+      "days_of_cover": 317.3,
       "inbound": 120
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 166,
+      "available": 165,
       "in_stock": true,
-      "fba": 138,
+      "fba": 137,
       "wfs": 28,
       "buffer": 0,
-      "days_of_cover": 442.7,
+      "days_of_cover": 330.0,
       "inbound": 108
     }
   ]
