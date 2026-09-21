@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-20T09:45:08+00:00",
+  "generated_at": "2026-09-21T10:38:02+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 33,
+      "available": 31,
       "in_stock": true,
-      "fba": 28,
+      "fba": 26,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 22.0,
+      "days_of_cover": 18.6,
       "inbound": 120
     },
     {
@@ -46,9 +46,9 @@
       "sku": "CA-1KR5-XQKF",
       "asin": "B0DLNXW93Y",
       "website_product_id": "",
-      "available": 30,
+      "available": 31,
       "in_stock": true,
-      "fba": 30,
+      "fba": 31,
       "wfs": 0,
       "buffer": 0,
       "days_of_cover": null,
@@ -91,12 +91,12 @@
       "sku": "8906048382868",
       "asin": "B0DLT47Z15",
       "website_product_id": "",
-      "available": 4,
+      "available": 3,
       "in_stock": true,
-      "fba": 4,
+      "fba": 3,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 32.0,
+      "days_of_cover": 12.0,
       "inbound": 0
     },
     {
@@ -276,7 +276,7 @@
       "fba": 44,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 102.7,
+      "days_of_cover": 117.3,
       "inbound": 12
     },
     {
@@ -301,12 +301,12 @@
       "sku": "TG-34ZG-5OMZ",
       "asin": "B0DLTZBL9P",
       "website_product_id": "",
-      "available": 17,
+      "available": 16,
       "in_stock": true,
-      "fba": 17,
+      "fba": 16,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 128.0,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 31,
+      "available": 29,
       "in_stock": true,
-      "fba": 31,
+      "fba": 29,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 24.1,
+      "days_of_cover": 22.6,
       "inbound": 12
     },
     {
@@ -471,7 +471,7 @@
       "fba": 11,
       "wfs": 4,
       "buffer": 0,
-      "days_of_cover": 60.0,
+      "days_of_cover": 120.0,
       "inbound": 0
     },
     {
@@ -481,12 +481,12 @@
       "sku": "LI-IE63-L7K3",
       "asin": "",
       "website_product_id": "",
-      "available": 107,
+      "available": 106,
       "in_stock": true,
-      "fba": 107,
+      "fba": 106,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 848.0,
       "inbound": 114
     },
     {
@@ -516,7 +516,7 @@
       "fba": 99,
       "wfs": 82,
       "buffer": 0,
-      "days_of_cover": 482.7,
+      "days_of_cover": 1448.0,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 107,
       "wfs": 29,
       "buffer": 0,
-      "days_of_cover": 317.3,
+      "days_of_cover": 952.0,
       "inbound": 120
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 165,
+      "available": 163,
       "in_stock": true,
-      "fba": 137,
+      "fba": 135,
       "wfs": 28,
       "buffer": 0,
-      "days_of_cover": 330.0,
+      "days_of_cover": 217.3,
       "inbound": 108
     }
   ]
