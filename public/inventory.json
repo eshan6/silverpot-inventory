@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-21T10:38:02+00:00",
+  "generated_at": "2026-09-22T09:53:37+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -21,7 +21,7 @@
       "fba": 26,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 18.6,
+      "days_of_cover": 20.7,
       "inbound": 120
     },
     {
@@ -46,12 +46,12 @@
       "sku": "CA-1KR5-XQKF",
       "asin": "B0DLNXW93Y",
       "website_product_id": "",
-      "available": 31,
+      "available": 30,
       "in_stock": true,
-      "fba": 31,
+      "fba": 30,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 210.0,
       "inbound": 0
     },
     {
@@ -106,12 +106,12 @@
       "sku": "2R-SB56-O2TT",
       "asin": "B0DLTJD2Y4",
       "website_product_id": "",
-      "available": 32,
+      "available": 30,
       "in_stock": true,
-      "fba": 32,
+      "fba": 30,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 120.0,
       "inbound": 0
     },
     {
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 44,
+      "available": 43,
       "in_stock": true,
-      "fba": 44,
+      "fba": 43,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 117.3,
+      "days_of_cover": 86.0,
       "inbound": 12
     },
     {
@@ -316,12 +316,12 @@
       "sku": "9J-T8HS-C66T",
       "asin": "B0DLV1PB82",
       "website_product_id": "",
-      "available": 36,
+      "available": 35,
       "in_stock": true,
-      "fba": 28,
+      "fba": 27,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": 288.0,
+      "days_of_cover": 140.0,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 29,
+      "available": 26,
       "in_stock": true,
-      "fba": 29,
+      "fba": 26,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 22.6,
+      "days_of_cover": 18.2,
       "inbound": 12
     },
     {
@@ -421,12 +421,12 @@
       "sku": "US-ASRC-EUHM",
       "asin": "B0DLWTFRJ9",
       "website_product_id": "",
-      "available": 2,
+      "available": 1,
       "in_stock": true,
-      "fba": 2,
+      "fba": 1,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 8.0,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 107,
       "wfs": 29,
       "buffer": 0,
-      "days_of_cover": 952.0,
+      "days_of_cover": null,
       "inbound": 120
     },
     {
@@ -546,7 +546,7 @@
       "fba": 135,
       "wfs": 28,
       "buffer": 0,
-      "days_of_cover": 217.3,
+      "days_of_cover": 260.8,
       "inbound": 108
     }
   ]
