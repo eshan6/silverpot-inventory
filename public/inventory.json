@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-23T09:54:47+00:00",
+  "generated_at": "2026-09-24T09:56:15+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -121,12 +121,12 @@
       "sku": "UZ-LPS9-WKKW",
       "asin": "B0DLTGRYKT",
       "website_product_id": "",
-      "available": 29,
+      "available": 28,
       "in_stock": true,
       "fba": 18,
-      "wfs": 11,
+      "wfs": 10,
       "buffer": 0,
-      "days_of_cover": 116.0,
+      "days_of_cover": 74.7,
       "inbound": 0
     },
     {
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 42,
+      "available": 40,
       "in_stock": true,
-      "fba": 42,
+      "fba": 40,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 67.2,
+      "days_of_cover": 45.7,
       "inbound": 12
     },
     {
@@ -376,9 +376,9 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 25,
+      "available": 24,
       "in_stock": true,
-      "fba": 25,
+      "fba": 24,
       "wfs": 0,
       "buffer": 0,
       "days_of_cover": 17.5,
@@ -396,7 +396,7 @@
       "fba": 25,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": 264.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -466,12 +466,12 @@
       "sku": "Y5-C6HY-68LV",
       "asin": "B0DLWTG5XN",
       "website_product_id": "",
-      "available": 14,
+      "available": 15,
       "in_stock": true,
       "fba": 10,
-      "wfs": 4,
+      "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 56.0,
+      "days_of_cover": 52.5,
       "inbound": 0
     },
     {
