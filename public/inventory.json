@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-26T09:49:50+00:00",
+  "generated_at": "2026-09-27T10:31:10+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 28,
+      "available": 29,
       "in_stock": true,
-      "fba": 23,
+      "fba": 24,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 39.2,
+      "days_of_cover": 40.6,
       "inbound": 120
     },
     {
@@ -96,7 +96,7 @@
       "fba": 3,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 7.0,
+      "days_of_cover": 10.5,
       "inbound": 0
     },
     {
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 37,
+      "available": 36,
       "in_stock": true,
-      "fba": 37,
+      "fba": 36,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 32.9,
+      "days_of_cover": 32.0,
       "inbound": 12
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 22,
+      "available": 21,
       "in_stock": true,
-      "fba": 22,
+      "fba": 21,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 14.7,
+      "days_of_cover": 14.0,
       "inbound": 12
     },
     {
@@ -471,7 +471,7 @@
       "fba": 7,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 16.8,
+      "days_of_cover": 21.0,
       "inbound": 0
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 161,
+      "available": 153,
       "in_stock": true,
-      "fba": 133,
+      "fba": 125,
       "wfs": 28,
       "buffer": 0,
-      "days_of_cover": 214.7,
+      "days_of_cover": 94.2,
       "inbound": 108
     }
   ]
