@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T10:31:10+00:00",
+  "generated_at": "2026-09-28T11:38:43+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 29,
+      "available": 25,
       "in_stock": true,
-      "fba": 24,
+      "fba": 20,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 40.6,
+      "days_of_cover": 19.4,
       "inbound": 120
     },
     {
@@ -126,7 +126,7 @@
       "fba": 18,
       "wfs": 10,
       "buffer": 0,
-      "days_of_cover": 74.7,
+      "days_of_cover": 224.0,
       "inbound": 0
     },
     {
@@ -276,7 +276,7 @@
       "fba": 36,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 32.0,
+      "days_of_cover": 36.0,
       "inbound": 12
     },
     {
@@ -301,12 +301,12 @@
       "sku": "TG-34ZG-5OMZ",
       "asin": "B0DLTZBL9P",
       "website_product_id": "",
-      "available": 16,
+      "available": 15,
       "in_stock": true,
-      "fba": 16,
+      "fba": 15,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 128.0,
+      "days_of_cover": 60.0,
       "inbound": 0
     },
     {
@@ -381,7 +381,7 @@
       "fba": 21,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 14.0,
+      "days_of_cover": 16.8,
       "inbound": 12
     },
     {
@@ -511,12 +511,12 @@
       "sku": "X4-NBPO-69NU",
       "asin": "",
       "website_product_id": "",
-      "available": 181,
+      "available": 180,
       "in_stock": true,
-      "fba": 99,
+      "fba": 98,
       "wfs": 82,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 1440.0,
       "inbound": 0
     },
     {
@@ -526,12 +526,12 @@
       "sku": "M6-VQP9-KZDY",
       "asin": "",
       "website_product_id": "",
-      "available": 135,
+      "available": 134,
       "in_stock": true,
-      "fba": 106,
+      "fba": 105,
       "wfs": 29,
       "buffer": 0,
-      "days_of_cover": 945.0,
+      "days_of_cover": 536.0,
       "inbound": 120
     },
     {
@@ -546,7 +546,7 @@
       "fba": 125,
       "wfs": 28,
       "buffer": 0,
-      "days_of_cover": 94.2,
+      "days_of_cover": 102.0,
       "inbound": 108
     }
   ]
