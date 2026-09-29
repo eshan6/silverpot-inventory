@@ -220,8 +220,21 @@ Two things in the code exist because of this episode:
   recorded in `public/inventory.json` as `fba_source`, so every published
   number is traceable to how it was obtained.
 
-**Website push: not configured.** Waiting on Supabase table and column names
-from the silverpottea.com Lovable project. See `LOVABLE_PROMPT.md`.
+**Website push: written and tested, not switched on.** The schema question
+`LOVABLE_PROMPT.md` was written to ask has been answered:
+`public.product_inventory` holds `id, product_id, sku, quantity, created_at,
+updated_at, inventory_source`. There is **no** `inventory_synced_at` -
+`updated_at` is trigger-managed, and naming a column that does not exist makes
+Supabase reject every write, which is why `SUPABASE_SYNCED_COLUMN` defaults to
+empty. `tests/test_website.py` pins the request shape against that schema.
+
+What remains is configuration only, and only Eshan can do it: two repository
+secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, for the **storefront's**
+Supabase project, not the dashboard's) and three repository variables
+(`SUPABASE_TABLE=product_inventory`, `SUPABASE_SKU_COLUMN=sku`,
+`SUPABASE_QTY_COLUMN=quantity`), plus the marketplace SKU filled into each
+`product_inventory.sku`. `collector/main.py` skips the push while
+`website.configured()` is false, so the pipeline runs unharmed until then.
 
 ## Running it
 
@@ -284,6 +297,27 @@ whatever is ready within eight minutes, and saves the rest as pending for the
 next run - so a slow queue costs time and never a failed run. `ads.collect`
 carries not-ready reports and still raises on failed ones; the two are
 different answers.
+
+**The history walk does the same, and asks on one run to collect on the next.**
+It used to call `ads.fetch_many`, which polls to `POLL_LIMIT`; run 53 spent
+seventeen of its eighteen minutes there for twenty seconds of work, and a run
+that timed out discarded reports Amazon had already built. It now requests a
+chunk, records the ids under `ads_backfill_pending`, and collects them next
+run. Two things that look like details and are not:
+
+- **The cursor moves only when a chunk is whole.** Half a chunk written with
+  the cursor advanced leaves days in `ads_search_terms` that nothing goes back
+  for, and the walk only ever moves one way.
+- **Rows found are summed across the runs a chunk spans.** The empty-streak
+  rule ends the walk after six empty chunks; a chunk whose rows all arrived in
+  the first run would show the second run zero and count a busy month as
+  empty. Hence `found` in the pending record.
+
+The two pending sets are deliberately separate keys. Neither may consume the
+other's ids, and a trailing window that is still building must not stop the
+walk from asking - Amazon is slow most days, so skipping on those days would
+stall the walk permanently. Each side refuses to ask for a second set while
+its own first set is in flight, so at most two sets are ever queued.
 
 Credentials come from environment variables. Locally, put them in `.env`
 (already gitignored) and source it. In CI they are GitHub Actions secrets.
