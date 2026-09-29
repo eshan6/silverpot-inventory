@@ -327,3 +327,83 @@ class TestAllReportsAtOnce(unittest.TestCase):
         # ...and short enough that the workflow's 45-minute cap still wins,
         # leaving room for the write that follows.
         self.assertLess(ads.POLL_LIMIT * ads.POLL_SECONDS, 35 * 60)
+
+
+class TestCollectCarriesPendingReports(unittest.TestCase):
+    """A slow report must not fail a run that did nothing wrong.
+
+    Amazon took over ten minutes, then over twenty-five, to build Silverpot's
+    first report - two runs, two timeouts, both on the first of the set. The
+    answer is not a third number: a report that is not ready is carried to the
+    next run.
+    """
+
+    def test_a_report_that_is_not_ready_is_returned_not_raised(self):
+        sess = FakeSession([FakeResponse(200, {"status": "PROCESSING"})])
+        with mock.patch.dict(os.environ, ENV, clear=True):
+            rows, still, statuses = ads.collect("tok", {"sp_campaigns": "r-1"},
+                                                sess=sess)
+        self.assertEqual(rows, {})
+        self.assertEqual(still, {"sp_campaigns": "r-1"})
+        self.assertEqual(statuses["sp_campaigns"], "pending")
+
+    def test_what_is_ready_is_returned_even_when_something_else_is_not(self):
+        # The whole point: one slow program must not withhold the others.
+        blob = gzip.compress(json.dumps([{"date": "2026-09-07"}]).encode())
+        sess = FakeSession([
+            FakeResponse(200, {"status": "COMPLETED", "url": "https://dl/a"}),
+            FakeResponse(200, content=blob),
+            FakeResponse(200, {"status": "PROCESSING"}),
+        ])
+        with mock.patch.dict(os.environ, ENV, clear=True):
+            rows, still, _ = ads.collect(
+                "tok", {"sp_campaigns": "r-a", "sb_campaigns": "r-b"}, sess=sess)
+        self.assertEqual(list(rows), ["sp_campaigns"])
+        self.assertEqual(still, {"sb_campaigns": "r-b"})
+
+    def test_a_failed_report_still_raises(self):
+        # Not-ready and failed are different answers. Carrying a failure to
+        # the next run would hide it forever.
+        sess = FakeSession([FakeResponse(200, {"status": "FAILURE",
+                                               "failureReason": "bad"})])
+        with mock.patch.dict(os.environ, ENV, clear=True):
+            with self.assertRaises(RuntimeError):
+                ads.collect("tok", {"sp_campaigns": "r-1"}, sess=sess)
+
+    def test_zero_budget_is_one_sweep_not_zero_sweeps(self):
+        # The default. A scheduled job asks once and lets the next run retry,
+        # but it must actually ask.
+        sess = FakeSession([FakeResponse(200, {"status": "PENDING"})])
+        with mock.patch.dict(os.environ, ENV, clear=True):
+            _, still, _ = ads.collect("tok", {"sp_campaigns": "r-1"},
+                                      sess=sess, budget_seconds=0)
+        self.assertEqual(len(sess.calls), 1)
+        self.assertEqual(still, {"sp_campaigns": "r-1"})
+
+    def test_it_keeps_sweeping_until_the_budget_is_spent(self):
+        blob = gzip.compress(json.dumps([{"date": "2026-09-07"}]).encode())
+        sess = FakeSession([
+            FakeResponse(200, {"status": "PENDING"}),
+            FakeResponse(200, {"status": "COMPLETED", "url": "https://dl/a"}),
+            FakeResponse(200, content=blob),
+        ])
+        ticks = iter([0.0, 0.0, 5.0, 5.0, 10.0, 10.0])
+        with mock.patch.dict(os.environ, ENV, clear=True):
+            rows, still, _ = ads.collect(
+                "tok", {"sp_campaigns": "r-a"}, sess=sess,
+                budget_seconds=60, pause=0,
+                clock=lambda: next(ticks), sleep=lambda _s: None)
+        self.assertEqual(still, {})
+        self.assertEqual(len(rows["sp_campaigns"]), 1)
+
+    def test_request_all_asks_for_every_key_and_waits_for_none(self):
+        sess = FakeSession([
+            FakeResponse(200, {"reportId": "r-a"}),
+            FakeResponse(200, {"reportId": "r-b"}),
+        ])
+        with mock.patch.dict(os.environ, ENV, clear=True):
+            ids = ads.request_all("tok", ["sp_campaigns", "sb_campaigns"],
+                                  date(2026, 9, 7), date(2026, 9, 7), sess=sess)
+        self.assertEqual(ids, {"sp_campaigns": "r-a", "sb_campaigns": "r-b"})
+        self.assertTrue(all(c["verb"] == "POST" for c in sess.calls),
+                        "request_all must not poll")

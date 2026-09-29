@@ -313,6 +313,55 @@ def fetch(token: str, key: str, start: date, end: date, sess=None,
     return [normalize(r, spec) for r in download_report(url, sess=sess)]
 
 
+def request_all(token: str, keys, start: date, end: date,
+                sess=None) -> dict[str, str]:
+    """Ask for every report and return its id, without waiting for any."""
+    sess = sess or net.session()
+    return {key: request_report(token, REPORTS[key], start, end, sess=sess)
+            for key in keys}
+
+
+def collect(token: str, pending: dict[str, str], sess=None,
+            budget_seconds: float = 0.0, pause: float = POLL_SECONDS,
+            clock=time.monotonic, sleep=time.sleep):
+    """Gather whatever is ready and hand back what is not.
+
+    Returns (rows_by_key, still_pending, statuses).
+
+    This is what stops a slow report from failing the run. Amazon took longer
+    than ten minutes, and then longer than twenty-five, to build Silverpot's
+    first report - two runs, two timeouts, both on the first report of the
+    set. No timeout is the right answer to that: the job should not be racing
+    a queue it does not control. A report that is not ready is carried to the
+    next run instead of raising, and the caller writes whatever did arrive.
+
+    A *failed* report still raises, through poll_report. Not-ready and failed
+    are different answers, and treating a failure as "try again tomorrow"
+    would hide it forever.
+
+    `budget_seconds` is how long to keep sweeping before giving up for this
+    run. Zero means a single sweep - ask once, take what is there - which is
+    the right default for a scheduled job, where the next run is the retry.
+    """
+    sess = sess or net.session()
+    remaining = dict(pending)
+    rows_by_key: dict[str, list[dict]] = {}
+    statuses: dict[str, str] = {}
+    deadline = clock() + budget_seconds
+
+    while True:
+        for key in list(remaining):
+            status, url = poll_report(token, remaining[key], sess=sess)
+            statuses[key] = status
+            if status == "done":
+                rows_by_key[key] = [normalize(r, REPORTS[key])
+                                    for r in download_report(url, sess=sess)]
+                del remaining[key]
+        if not remaining or clock() >= deadline:
+            return rows_by_key, remaining, statuses
+        sleep(pause)
+
+
 def fetch_many(token: str, keys, start: date, end: date, sess=None,
                pause: float = POLL_SECONDS,
                limit: int = POLL_LIMIT) -> dict[str, list[dict]]:
