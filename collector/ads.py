@@ -26,6 +26,7 @@ import gzip
 import io
 import json
 import os
+import re
 import time
 from datetime import date
 
@@ -58,6 +59,46 @@ def missing() -> list[str]:
 
 class AdsDenied(RuntimeError):
     """Authorized, but not for this. Usually onboarding step 3 was skipped."""
+
+
+class RetentionLimit(RuntimeError):
+    """Asked for days older than Amazon keeps. Carries the earliest it has.
+
+    Worth its own type because the answer is in the refusal. Amazon replies
+
+        startDate (2026-07-16) must be equal to or after report type data
+        retention start date (2026-07-31)
+
+    which is the retention window stating itself, exactly, on the day it is
+    asked. This repository guesses at no API fact it can measure, and a walk
+    that reads the date out of the refusal cannot be wrong about it the way a
+    constant can - different report types keep different amounts, and Amazon
+    has moved the number before.
+    """
+
+    def __init__(self, earliest: date, detail: str = ""):
+        self.earliest = earliest
+        super().__init__(
+            f"Amazon keeps these reports only back to {earliest}"
+            + (f": {detail}" if detail else ""))
+
+
+# The date out of that refusal. Deliberately anchored on Amazon's own phrase
+# rather than "the last date in the message": the message names two dates, and
+# the one we want is the second.
+_RETENTION_DATE = re.compile(
+    r"retention start date\s*\((\d{4}-\d{2}-\d{2})\)", re.I)
+
+
+def retention_start(body: str) -> date | None:
+    """The retention date named in a 400 body, or None if it names none."""
+    found = _RETENTION_DATE.search(body or "")
+    if not found:
+        return None
+    try:
+        return date.fromisoformat(found.group(1))
+    except ValueError:
+        return None
 
 
 def get_access_token(sess=None) -> str:
@@ -246,6 +287,9 @@ def request_report(token: str, spec: dict, start: date, end: date,
             "assigned to this Login with Amazon application yet."
         )
     if resp.status_code >= 400:
+        earliest = retention_start(resp.text)
+        if earliest:
+            raise RetentionLimit(earliest, resp.text[:200])
         raise RuntimeError(f"Report request failed: {resp.status_code} "
                            f"{resp.text[:300]}")
     return (resp.json() or {}).get("reportId") or ""

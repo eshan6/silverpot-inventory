@@ -303,6 +303,90 @@ class TestTheWalkNeverFailsTheRun(unittest.TestCase):
             db.settings[ads_sync.BACKFILL_SETTING]).done)
 
 
+class TestAmazonNamesItsOwnRetentionWindow(unittest.TestCase):
+    """Run 54 asked for 2026-07-16 and was told:
+
+        startDate (2026-07-16) must be equal to or after report type data
+        retention start date (2026-07-31)
+
+    ADS_HORIZON_DAYS was 95 and the truth was 60. Worse than the wrong number
+    was what the wrong number did: extend_history caught the error, so nothing
+    failed, and the cursor never moved because nothing was collected - so the
+    walk would have asked for the same impossible chunk on every run forever.
+    """
+
+    BODY = ('{"code":"400","detail":"startDate (2026-07-16) must be equal to '
+            'or after report type data retention start date (2026-07-31)"}')
+
+    def refusing(self, earliest: date):
+        def request_all(token, keys, start, end, sess=None):
+            if start < earliest:
+                raise ads_sync.ads.RetentionLimit(earliest, self.BODY)
+            return {k: f"report-{k}" for k in keys}
+        return request_all
+
+    def test_the_date_is_read_out_of_amazons_own_words(self):
+        self.assertEqual(ads_sync.ads.retention_start(self.BODY),
+                         date(2026, 7, 31))
+
+    def test_the_second_date_is_taken_not_the_first(self):
+        # The message names the rejected start date too. Taking that one would
+        # clamp to exactly the value Amazon just refused.
+        self.assertNotEqual(ads_sync.ads.retention_start(self.BODY),
+                            date(2026, 7, 16))
+
+    def test_a_body_naming_no_retention_date_reads_as_none(self):
+        self.assertIsNone(ads_sync.ads.retention_start(
+            '{"code":"400","detail":"something else entirely"}'))
+        self.assertIsNone(ads_sync.ads.retention_start(""))
+
+    def test_a_chunk_that_straddles_the_limit_is_clamped_and_asked_again(self):
+        # Inside the chunk (2026-08-15..2026-09-13), so there is something to
+        # clamp. A limit older than the chunk would need no clamping at all.
+        earliest = date(2026, 9, 1)
+        db = FakeDB()
+        h = Harness(db)
+        h.request_all = self.refusing(earliest)
+        h.run()
+        saved = pending_of(db)
+        self.assertEqual(saved["start"], earliest.isoformat())
+        self.assertEqual(saved["end"], (COVERED - timedelta(days=1)).isoformat())
+
+    def test_collecting_the_clamped_chunk_moves_the_cursor_to_the_limit(self):
+        earliest = date(2026, 9, 1)
+        db = FakeDB()
+        asked = Harness(db)
+        asked.request_all = self.refusing(earliest)
+        asked.run()
+        Harness(db).run()
+        self.assertEqual(cursor_of(db), earliest)
+
+    def test_a_chunk_wholly_older_than_the_limit_ends_the_walk(self):
+        # The thing that stops the forever-loop: no chunk of it is servable,
+        # so the walk is over rather than retried.
+        db = FakeDB()
+        h = Harness(db)
+        h.request_all = self.refusing(date(2026, 12, 1))
+        h.run()
+        self.assertTrue(backfill.State.from_settings(
+            db.settings[ads_sync.BACKFILL_SETTING]).done)
+
+    def test_and_a_finished_walk_asks_for_nothing_on_the_next_run(self):
+        db = FakeDB()
+        stuck = Harness(db)
+        stuck.request_all = self.refusing(date(2026, 12, 1))
+        stuck.run()
+        after = Harness(db)
+        after.run()
+        self.assertEqual(after.requested, [])
+        self.assertEqual(pending_of(db).get("reports", {}), {})
+
+    def test_the_horizon_matches_what_amazon_actually_answered(self):
+        # 2026-09-29 minus sixty days is 2026-07-31, the date in the refusal.
+        self.assertEqual(TODAY - timedelta(days=ads_sync.ADS_HORIZON_DAYS),
+                         date(2026, 7, 31))
+
+
 class TestTheTwoPendingSetsAreSeparate(unittest.TestCase):
     def test_the_walk_does_not_read_or_clear_the_trailing_window(self):
         trailing = {
