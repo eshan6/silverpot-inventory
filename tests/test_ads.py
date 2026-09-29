@@ -238,3 +238,92 @@ class TestReportLifecycle(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAllReportsAtOnce(unittest.TestCase):
+    """fetch_many exists because one-at-a-time did not fit the run.
+
+    The first live run, on 2026-09-29, got a report id immediately and then
+    timed out waiting for Amazon to build it. Raising the timeout alone would
+    not have been enough: waiting the full timeout per program, in series, is
+    three times the budget the workflow allows.
+    """
+
+    def test_every_report_is_requested_before_any_is_waited_for(self):
+        # The property that makes this fit: Amazon builds all three at once.
+        # If the requests went out one at a time, each would only start
+        # building after the previous finished.
+        blob = gzip.compress(json.dumps([{"date": "2026-09-07"}]).encode())
+        sess = FakeSession([
+            FakeResponse(200, {"reportId": "r-a"}),
+            FakeResponse(200, {"reportId": "r-b"}),
+            FakeResponse(200, {"status": "COMPLETED", "url": "https://dl/a"}),
+            FakeResponse(200, content=blob),
+            FakeResponse(200, {"status": "COMPLETED", "url": "https://dl/b"}),
+            FakeResponse(200, content=blob),
+        ])
+        with mock.patch.dict(os.environ, ENV, clear=True):
+            out = ads.fetch_many("tok", ["sp_campaigns", "sp_search_terms"],
+                                 date(2026, 9, 7), date(2026, 9, 7),
+                                 sess=sess, pause=0)
+
+        verbs = [c["verb"] for c in sess.calls]
+        self.assertEqual(verbs[:2], ["POST", "POST"],
+                         "both reports must be requested before any polling")
+        self.assertEqual(set(out), {"sp_campaigns", "sp_search_terms"})
+
+    def test_a_slow_report_does_not_hold_up_one_that_is_ready(self):
+        blob = gzip.compress(json.dumps([{"date": "2026-09-07"}]).encode())
+        sess = FakeSession([
+            FakeResponse(200, {"reportId": "r-a"}),
+            FakeResponse(200, {"reportId": "r-b"}),
+            # First sweep: a is ready, b is not.
+            FakeResponse(200, {"status": "COMPLETED", "url": "https://dl/a"}),
+            FakeResponse(200, content=blob),
+            FakeResponse(200, {"status": "PROCESSING"}),
+            # Second sweep: only b is still asked about.
+            FakeResponse(200, {"status": "COMPLETED", "url": "https://dl/b"}),
+            FakeResponse(200, content=blob),
+        ])
+        with mock.patch.dict(os.environ, ENV, clear=True):
+            out = ads.fetch_many("tok", ["sp_campaigns", "sp_search_terms"],
+                                 date(2026, 9, 7), date(2026, 9, 7),
+                                 sess=sess, pause=0)
+        self.assertEqual(len(out), 2)
+        # A finished report is downloaded once, not re-polled on later sweeps.
+        self.assertEqual(sum(1 for c in sess.calls if c["url"] == "https://dl/a"), 1)
+
+    def test_a_failed_report_raises_rather_than_returning_no_rows(self):
+        sess = FakeSession([
+            FakeResponse(200, {"reportId": "r-a"}),
+            FakeResponse(200, {"status": "FAILURE", "failureReason": "nope"}),
+        ])
+        with mock.patch.dict(os.environ, ENV, clear=True):
+            with self.assertRaises(RuntimeError) as ctx:
+                ads.fetch_many("tok", ["sp_campaigns"], date(2026, 9, 7),
+                               date(2026, 9, 7), sess=sess, pause=0)
+        self.assertIn("nope", str(ctx.exception))
+
+    def test_a_timeout_names_which_reports_were_still_building(self):
+        # The 2026-09-29 failure named one id and nothing else. Which program
+        # is stuck is the first thing anyone reading the log wants.
+        sess = FakeSession([
+            FakeResponse(200, {"reportId": "r-a"}),
+            FakeResponse(200, {"status": "PROCESSING"}),
+            FakeResponse(200, {"status": "PROCESSING"}),
+        ])
+        with mock.patch.dict(os.environ, ENV, clear=True):
+            with self.assertRaises(RuntimeError) as ctx:
+                ads.fetch_many("tok", ["sp_campaigns"], date(2026, 9, 7),
+                               date(2026, 9, 7), sess=sess, pause=0, limit=2)
+        message = str(ctx.exception)
+        self.assertIn("sp_campaigns", message)
+        self.assertIn("r-a", message)
+
+    def test_the_wait_is_long_enough_for_a_cold_account(self):
+        # Ten minutes was not enough on the real account. Pin the budget so a
+        # later tidy-up cannot quietly restore it.
+        self.assertGreaterEqual(ads.POLL_LIMIT * ads.POLL_SECONDS, 20 * 60)
+        # ...and short enough that the workflow's 45-minute cap still wins,
+        # leaving room for the write that follows.
+        self.assertLess(ads.POLL_LIMIT * ads.POLL_SECONDS, 35 * 60)
