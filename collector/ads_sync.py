@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 
 from . import ads, backfill, dashboard_db, net, orders
 
@@ -30,6 +31,26 @@ TABLE_FOR_GRAIN = {
 
 BACKFILL_SETTING = "ads_backfill"
 
+# Reports in flight, carried between runs.
+#
+# Amazon took over ten minutes, and then over twenty-five, to build
+# Silverpot's first report - two runs, two timeouts, both on the first report
+# of the set. Waiting inside the job means racing a queue nobody here
+# controls, and losing that race fails a run that did nothing wrong.
+#
+# So a run asks for its reports, keeps whatever is ready, and writes the rest
+# down as pending. The next run collects them. A report that takes an hour
+# costs nothing but an hour; the job itself always finishes.
+PENDING_SETTING = "ads_pending_reports"
+
+# One sweep costs a few seconds. This is how long a run will keep sweeping
+# before parking what is left - long enough to finish in one go when Amazon is
+# quick, short enough that a slow queue does not hold the runner open.
+COLLECT_BUDGET_SECONDS = 8 * 60
+
+# A report id Amazon never finished is not worth carrying forever.
+PENDING_MAX_AGE_HOURS = 36
+
 # Advertising history is far shorter-lived than order history: Amazon keeps
 # roughly a quarter of it available for reporting, against two years of orders.
 # Like the sales horizon this is a ceiling rather than a claim - a request for
@@ -37,6 +58,123 @@ BACKFILL_SETTING = "ads_backfill"
 # here costs one skipped chunk and nothing else.
 ADS_HORIZON_DAYS = 95
 ADS_CHUNK_DAYS = 30
+
+
+def probe_collect(token, keys, start, end):
+    """The probe's own collect: raw rows, same carry-over as a real run."""
+    saved = dashboard_db.get_setting(PENDING_SETTING) or {}
+    pending = dict(saved.get("reports") or {})
+    window = (saved.get("start"), saved.get("end"))
+    asked_at = saved.get("asked_at")
+
+    if pending and _too_old(asked_at):
+        print(f"Abandoning {len(pending)} stale report(s) from {asked_at}.")
+        pending, window, asked_at = {}, (None, None), None
+
+    if pending:
+        print(f"Collecting {len(pending)} report(s) from {window[0]}..{window[1]}")
+    else:
+        pending = ads.request_all(token, keys, start, end)
+        window = (start.isoformat(), end.isoformat())
+        asked_at = _now_iso()
+        print(f"Requested {len(pending)} report(s) for {window[0]}..{window[1]}")
+
+    sess = net.session()
+    raw_by_key = {}
+    remaining = dict(pending)
+    import time as _time
+    deadline = _time.monotonic() + COLLECT_BUDGET_SECONDS
+    while True:
+        for key in list(remaining):
+            status, url = ads.poll_report(token, remaining[key], sess=sess)
+            if status == "done":
+                raw_by_key[key] = ads.download_report(url, sess=sess)
+                del remaining[key]
+            else:
+                print(f"    {key}: {status}")
+        if not remaining or _time.monotonic() >= deadline:
+            break
+        _time.sleep(ads.POLL_SECONDS)
+
+    if remaining:
+        dashboard_db.set_setting(PENDING_SETTING, {
+            "reports": remaining, "start": window[0], "end": window[1],
+            "asked_at": asked_at,
+        })
+    elif saved:
+        dashboard_db.set_setting(PENDING_SETTING, {})
+    return raw_by_key, remaining, window
+
+
+def collect_or_request(token, keys, start, end, dry_run=False):
+    """Collect reports already in flight, or ask for a new set.
+
+    Returns (rows_by_key, still_pending, window).
+
+    The rule that keeps this honest: a run never asks for a second set while
+    the first is still building. Requesting again every twelve hours would
+    queue reports faster than Amazon retires them, and the pending list would
+    grow without anything ever being collected.
+
+    A pending set older than PENDING_MAX_AGE_HOURS is abandoned rather than
+    waited on forever. Amazon's report ids do expire, and a stuck set that is
+    never dropped means the pipeline never asks again.
+    """
+    saved = dashboard_db.get_setting(PENDING_SETTING) or {}
+    pending = dict(saved.get("reports") or {})
+    window = (saved.get("start"), saved.get("end"))
+    asked_at = saved.get("asked_at")
+
+    if pending and _too_old(asked_at):
+        print(f"Abandoning {len(pending)} report(s) requested at {asked_at}: "
+              f"older than {PENDING_MAX_AGE_HOURS}h.")
+        pending, window = {}, (None, None)
+
+    if pending:
+        print(f"Collecting {len(pending)} report(s) from {window[0]}..{window[1]}")
+    else:
+        pending = ads.request_all(token, keys, start, end)
+        window = (start.isoformat(), end.isoformat())
+        print(f"Requested {len(pending)} report(s) for {window[0]}..{window[1]}")
+
+    rows_by_key, still_pending, statuses = ads.collect(
+        token, pending, budget_seconds=COLLECT_BUDGET_SECONDS)
+
+    for key in sorted(statuses):
+        if statuses[key] != "done":
+            print(f"    {key}: {statuses[key]}")
+
+    # A dry run must leave the carry-over exactly as it found it, or it would
+    # consume reports the next real run was going to write.
+    if not dry_run:
+        if still_pending:
+            dashboard_db.set_setting(PENDING_SETTING, {
+                "reports": still_pending,
+                "start": window[0],
+                "end": window[1],
+                "asked_at": asked_at or _now_iso(),
+            })
+        elif saved:
+            dashboard_db.set_setting(PENDING_SETTING, {})
+
+    return rows_by_key, still_pending, window
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _too_old(asked_at) -> bool:
+    if not asked_at:
+        return False
+    try:
+        when = datetime.fromisoformat(asked_at)
+    except ValueError:
+        return True
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    age = (datetime.now(timezone.utc) - when).total_seconds()
+    return age > PENDING_MAX_AGE_HOURS * 3600
 
 
 def main() -> int:
@@ -78,24 +216,35 @@ def main() -> int:
 
         if args.probe:
             # Raw, before normalization: the whole point is to see what Amazon
-            # actually calls things. Requested together, same as a real run,
-            # so the probe waits once rather than once per program.
-            ids = {k: ads.request_report(token, ads.REPORTS[k], start, end)
-                   for k in keys}
-            print(f"Requested {len(ids)} report(s); waiting.")
-            for key, report_id in ids.items():
-                url = ads.wait_for_report(token, report_id)
-                raw = ads.download_report(url)
+            # actually calls things.
+            #
+            # The probe carries reports between runs like the real path does,
+            # and for the same reason - it was the probe that sat for
+            # twenty-five minutes and failed, twice, teaching us nothing. A
+            # probe that reports "still building" is more use than one that
+            # dies waiting.
+            raw_by_key, still, window = probe_collect(token, keys, start, end)
+            for key, raw in raw_by_key.items():
                 print(f"\n=== {key} ({len(raw)} rows) ===")
                 print(json.dumps(raw[:3], indent=2)[:4000])
                 if raw:
                     print(f"keys: {sorted(raw[0])}")
+                else:
+                    print("(no rows - the report built, and it is empty)")
+            if still:
+                print(f"\nStill building after {COLLECT_BUDGET_SECONDS // 60}m: "
+                      f"{', '.join(sorted(still))}")
+                print("Run the probe again to pick them up; the ids are saved.")
             return 0
 
-        by_key = ads.fetch_many(token, keys, start, end)
+        by_key, still_pending, window = collect_or_request(
+            token, keys, start, end, dry_run=args.dry_run)
+
         for key in keys:
             spec = ads.REPORTS[key]
-            rows = by_key.get(key, [])
+            if key not in by_key:
+                continue
+            rows = by_key[key]
             print(f"  {key}: {len(rows)} row(s)")
             if args.dry_run:
                 for r in rows[:5]:
@@ -103,6 +252,11 @@ def main() -> int:
                           f"spend={r.get('spend')} clicks={r.get('clicks')}")
                 continue
             written += dashboard_db.upsert(TABLE_FOR_GRAIN[spec["grain"]], rows)
+
+        if still_pending:
+            print(f"  still building, will collect next run: "
+                  f"{', '.join(sorted(still_pending))} "
+                  f"(window {window[0]}..{window[1]})")
 
     except ads.AdsDenied as exc:
         print(f"Amazon Ads denied: {exc}", file=sys.stderr)
