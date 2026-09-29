@@ -75,21 +75,27 @@ def main() -> int:
     written = 0
     try:
         token = ads.get_access_token()
-        for key in keys:
-            spec = ads.REPORTS[key]
-            if args.probe:
-                # Raw, before normalization: the whole point is to see what
-                # Amazon actually calls things.
-                report_id = ads.request_report(token, spec, start, end)
+
+        if args.probe:
+            # Raw, before normalization: the whole point is to see what Amazon
+            # actually calls things. Requested together, same as a real run,
+            # so the probe waits once rather than once per program.
+            ids = {k: ads.request_report(token, ads.REPORTS[k], start, end)
+                   for k in keys}
+            print(f"Requested {len(ids)} report(s); waiting.")
+            for key, report_id in ids.items():
                 url = ads.wait_for_report(token, report_id)
                 raw = ads.download_report(url)
                 print(f"\n=== {key} ({len(raw)} rows) ===")
                 print(json.dumps(raw[:3], indent=2)[:4000])
                 if raw:
                     print(f"keys: {sorted(raw[0])}")
-                continue
+            return 0
 
-            rows = ads.fetch(token, key, start, end)
+        by_key = ads.fetch_many(token, keys, start, end)
+        for key in keys:
+            spec = ads.REPORTS[key]
+            rows = by_key.get(key, [])
             print(f"  {key}: {len(rows)} row(s)")
             if args.dry_run:
                 for r in rows[:5]:
@@ -145,9 +151,10 @@ def extend_history(token: str, keys: list[str], oldest_covered) -> int:
 
         written = 0
         found = 0
+        by_key = ads.fetch_many(token, keys, chunk[0], chunk[-1])
         for key in keys:
             spec = ads.REPORTS[key]
-            rows = ads.fetch(token, key, chunk[0], chunk[-1])
+            rows = by_key.get(key, [])
             found += len(rows)
             written += dashboard_db.upsert(TABLE_FOR_GRAIN[spec["grain"]], rows)
 

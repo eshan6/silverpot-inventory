@@ -39,8 +39,13 @@ REQUIRED = ("ADS_CLIENT_ID", "ADS_CLIENT_SECRET", "ADS_REFRESH_TOKEN",
 
 # How long to wait for a report. Amazon builds these asynchronously and a
 # search-term report over a wide range is not instant.
+#
+# Ten minutes was not enough. The first live run, on 2026-09-29, got a report
+# id straight away - so credentials, profile and request body were all fine -
+# and then timed out waiting for Amazon to build it. A cold account's first
+# report is the slowest one it will ever produce.
 POLL_SECONDS = 10
-POLL_LIMIT = 60          # ten minutes
+POLL_LIMIT = 150         # twenty-five minutes
 
 
 def configured() -> bool:
@@ -240,26 +245,41 @@ def request_report(token: str, spec: dict, start: date, end: date,
     return (resp.json() or {}).get("reportId") or ""
 
 
+def poll_report(token: str, report_id: str, sess=None) -> tuple[str, str]:
+    """One status check. Returns ("done", url) or ("pending", "").
+
+    Split out of wait_for_report so that the single-report and all-reports
+    paths read Amazon's status values through the same code. Two readings of
+    "is it finished" would eventually disagree, and the one that got it wrong
+    would report an unfinished report as empty.
+    """
+    sess = sess or net.session()
+    resp = sess.get(f"{ADS_HOST}/reporting/reports/{report_id}",
+                    headers=_headers(token), timeout=net.TIMEOUT)
+    resp.raise_for_status()
+    body = resp.json() or {}
+    status = (body.get("status") or "").upper()
+    if status in ("COMPLETED", "SUCCESS"):
+        url = body.get("url") or body.get("location")
+        if not url:
+            raise RuntimeError(f"Report {report_id} completed with no URL")
+        return "done", url
+    if status in ("FAILURE", "FAILED", "CANCELLED"):
+        # A failed report is not an empty one. Returning zero rows here
+        # would publish "no advertising happened", which is a claim.
+        raise RuntimeError(f"Report {report_id} failed: "
+                           f"{body.get('failureReason') or body}")
+    return "pending", ""
+
+
 def wait_for_report(token: str, report_id: str, sess=None,
                     pause: float = POLL_SECONDS) -> str:
     """Poll until the report is built. Returns its download URL."""
     sess = sess or net.session()
     for _ in range(POLL_LIMIT):
-        resp = sess.get(f"{ADS_HOST}/reporting/reports/{report_id}",
-                        headers=_headers(token), timeout=net.TIMEOUT)
-        resp.raise_for_status()
-        body = resp.json() or {}
-        status = (body.get("status") or "").upper()
-        if status in ("COMPLETED", "SUCCESS"):
-            url = body.get("url") or body.get("location")
-            if not url:
-                raise RuntimeError(f"Report {report_id} completed with no URL")
+        status, url = poll_report(token, report_id, sess=sess)
+        if status == "done":
             return url
-        if status in ("FAILURE", "FAILED", "CANCELLED"):
-            # A failed report is not an empty one. Returning zero rows here
-            # would publish "no advertising happened", which is a claim.
-            raise RuntimeError(f"Report {report_id} failed: "
-                               f"{body.get('failureReason') or body}")
         time.sleep(pause)
     raise RuntimeError(f"Report {report_id} did not finish in "
                        f"{POLL_LIMIT * pause:.0f}s")
@@ -291,3 +311,46 @@ def fetch(token: str, key: str, start: date, end: date, sess=None,
     report_id = request_report(token, spec, start, end, sess=sess)
     url = wait_for_report(token, report_id, sess=sess, pause=pause)
     return [normalize(r, spec) for r in download_report(url, sess=sess)]
+
+
+def fetch_many(token: str, keys, start: date, end: date, sess=None,
+               pause: float = POLL_SECONDS,
+               limit: int = POLL_LIMIT) -> dict[str, list[dict]]:
+    """Every report at once: request them all, then wait for them together.
+
+    Doing this one report at a time multiplies the wait by the number of
+    programs, because each request only goes in once the previous one has
+    finished building. Amazon builds them in parallel perfectly happily - the
+    ids come back immediately - so the whole set costs about as long as the
+    slowest one rather than the sum of all three.
+
+    That is the difference between fitting in the workflow's budget and not:
+    three programs at twenty-five minutes each is over an hour, while three
+    requested together is twenty-five minutes in the worst case.
+
+    A program that fails is raised rather than returned empty. Zero rows is a
+    claim that no advertising happened, and this pipeline does not make claims
+    it has not verified.
+    """
+    sess = sess or net.session()
+    pending = {key: request_report(token, REPORTS[key], start, end, sess=sess)
+               for key in keys}
+    done: dict[str, list[dict]] = {}
+
+    for _ in range(limit):
+        for key in list(pending):
+            report_id = pending[key]
+            status, url = poll_report(token, report_id, sess=sess)
+            if status == "done":
+                spec = REPORTS[key]
+                done[key] = [normalize(r, spec)
+                             for r in download_report(url, sess=sess)]
+                del pending[key]
+        if not pending:
+            return done
+        time.sleep(pause)
+
+    raise RuntimeError(
+        f"Reports did not finish in {limit * pause:.0f}s: "
+        + ", ".join(f"{k}={v}" for k, v in sorted(pending.items())))
+
