@@ -289,7 +289,14 @@ def main() -> int:
     dashboard_db.finish_run(run_id, "ok", rows_written=written)
     print(f"Wrote {written} row(s)")
 
-    if not args.no_backfill:
+    # The history walk waits on its own reports, so running it while the
+    # current window is still building would stack one slow queue on another
+    # and make every run cost the sum of both. The walk has no deadline - it
+    # is months of history reached one chunk at a time - so the run that
+    # collects today's numbers is a fine one to skip it on.
+    if still_pending:
+        print("Skipping the history walk while reports are still building.")
+    elif not args.no_backfill:
         extend_history(token, keys, start)
     return 0
 
