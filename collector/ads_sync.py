@@ -83,18 +83,25 @@ def probe_collect(token, keys, start, end):
     raw_by_key = {}
     remaining = dict(pending)
     import time as _time
-    deadline = _time.monotonic() + COLLECT_BUDGET_SECONDS
+    started = _time.monotonic()
+    deadline = started + COLLECT_BUDGET_SECONDS
+    sweeps = 0
     while True:
+        sweeps += 1
         for key in list(remaining):
             status, url = ads.poll_report(token, remaining[key], sess=sess)
             if status == "done":
+                elapsed = _time.monotonic() - started
+                print(f"    {key}: ready after {elapsed:.0f}s")
                 raw_by_key[key] = ads.download_report(url, sess=sess)
                 del remaining[key]
-            else:
-                print(f"    {key}: {status}")
         if not remaining or _time.monotonic() >= deadline:
             break
         _time.sleep(ads.POLL_SECONDS)
+    # One line, not one per key per sweep: an eight-minute wait at ten-second
+    # intervals is fifty sweeps, and four keys each printing every time buries
+    # the answer in two hundred identical lines.
+    print(f"    {sweeps} sweep(s) over {_time.monotonic() - started:.0f}s")
 
     if remaining:
         dashboard_db.set_setting(PENDING_SETTING, {
