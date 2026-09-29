@@ -92,7 +92,7 @@ collector/
   amazon.py         SP-API FBA inventory (API + Reports fallback) + diagnose()
   walmart.py        Walmart WFS inventory
   sheets.py         Google Sheets sink (snapshots + current tabs)
-  website.py        Supabase writer for the storefront (not yet configured)
+  website.py        Supabase writer for the storefront (superseded, kept off)
   main.py           inventory orchestrator
   --- the dashboard, below: different job, different database ---
   orders.py         SP-API Orders -> units sold, bucketed by America/New_York
@@ -220,21 +220,30 @@ Two things in the code exist because of this episode:
   recorded in `public/inventory.json` as `fba_source`, so every published
   number is traceable to how it was obtained.
 
-**Website push: written and tested, not switched on.** The schema question
-`LOVABLE_PROMPT.md` was written to ask has been answered:
-`public.product_inventory` holds `id, product_id, sku, quantity, created_at,
-updated_at, inventory_source`. There is **no** `inventory_synced_at` -
-`updated_at` is trigger-managed, and naming a column that does not exist makes
-Supabase reject every write, which is why `SUPABASE_SYNCED_COLUMN` defaults to
-empty. `tests/test_website.py` pins the request shape against that schema.
+**Website push: superseded. Do not switch it on.** As of 2026-09-29 the
+storefront's stock is kept up to date by other means, outside this pipeline.
+Whatever writes it now is the source of truth for silverpottea.com, and a
+second writer would fight it: two systems patching the same column on their
+own schedules is how a SKU ends up flipping between two numbers, with the
+one that ran last winning by accident.
 
-What remains is configuration only, and only Eshan can do it: two repository
-secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, for the **storefront's**
-Supabase project, not the dashboard's) and three repository variables
-(`SUPABASE_TABLE=product_inventory`, `SUPABASE_SKU_COLUMN=sku`,
-`SUPABASE_QTY_COLUMN=quantity`), plus the marketplace SKU filled into each
-`product_inventory.sku`. `collector/main.py` skips the push while
-`website.configured()` is false, so the pipeline runs unharmed until then.
+So `website.configured()` staying false is the **intended** state, not an
+unfinished step. `collector/main.py` skips the push and prints "Website push
+skipped (not configured yet)", which is a slightly misleading line now - read
+it as "not wanted" rather than "not ready".
+
+The code is kept rather than deleted, deliberately: `collector/website.py`,
+`tests/test_website.py` and `LOVABLE_PROMPT.md` all still work, and the schema
+they were written against was confirmed live (`public.product_inventory` holds
+`id, product_id, sku, quantity, created_at, updated_at, inventory_source`; no
+`inventory_synced_at`, because `updated_at` is trigger-managed). If the other
+route is ever dropped, this is a working replacement rather than something to
+rebuild. Do not set `SUPABASE_TABLE`, `SUPABASE_SKU_COLUMN` or
+`SUPABASE_QTY_COLUMN` without checking first that the other writer is gone.
+
+`website_product_id` in `sku_map.csv` belongs to this and is empty in all 36
+rows. It is still echoed into `public/inventory.json`, so removing it changes
+the feed's shape - left alone for that reason.
 
 ## Running it
 
@@ -344,9 +353,9 @@ GOOGLE_SERVICE_ACCOUNT_JSON  GOOGLE_SHEET_ID
 FORCE_IPV4=true
 ```
 
-Optional, for the website push once known: `SUPABASE_URL`,
-`SUPABASE_SERVICE_KEY`, `SUPABASE_TABLE`, `SUPABASE_SKU_COLUMN`,
-`SUPABASE_QTY_COLUMN`.
+Deliberately unset, and to stay that way - the website push is superseded, see
+Current status: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_TABLE`,
+`SUPABASE_SKU_COLUMN`, `SUPABASE_QTY_COLUMN`.
 
 ## Rules for changes
 

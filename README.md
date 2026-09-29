@@ -50,9 +50,11 @@ need your attention before the first run:
 `internal_code` (`DARJ_ORIG`) is the internal join key; `sku` is the real
 marketplace code, the same string on both Amazon and Walmart.
 
-Two columns get filled in later:
+Two columns stay blank:
 
-- **`website_product_id`** — leave blank for now, filled at the Lovable step.
+- **`website_product_id`** — leave blank permanently. It belonged to the
+  website push, which is superseded (Step 7). Kept only because it appears in
+  `inventory.json` and removing it would change the feed's shape.
 - **`walmart_sku_override`** — leave blank. Fill it only when the
   FNSKU-to-manufacturer-barcode conversion issues a new Amazon SKU for a product
   whose Walmart listing keeps the old one. That is the one foreseeable event
@@ -158,7 +160,7 @@ therefore searches a list of candidate field names rather than hardcoding one.
 actually returns. If it isn't in `ATS_FIELDS`, add it at the top of the list.
 
 Then verify against Seller Central and Seller Center by hand for about a week
-before pointing the website at it.
+before trusting the published figure.
 
 The workflow runs at 05:13 UTC (01:13 ET), with a 13:43 UTC safety net that
 skips itself if the morning run already published today's feed. Both are on odd
@@ -190,15 +192,23 @@ on it.
 Either way the same deployment serves both the dashboard at `/` and the feed at
 `/inventory.json`, with CORS already open via `_headers` / `vercel.json`.
 
-### Step 7 — Website
+### Step 7 — Website (skip this: superseded)
 
-See `LOVABLE_PROMPT.md`. The daily job writes into the same database your admin
-panel writes to, so no website code changes. Requires two more GitHub secrets
-(`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`) and three repository variables
-(`SUPABASE_TABLE`, `SUPABASE_SKU_COLUMN`, `SUPABASE_QTY_COLUMN`).
+**There is nothing to do here.** As of 2026-09-29 silverpottea.com's stock is
+kept current by other means, outside this pipeline, and that is now the source
+of truth. Switching this on as well would give the same column two writers on
+two schedules, and a SKU would flip between their numbers depending on which
+ran last.
 
-Until those are set the collector prints "Website push skipped" and does
-everything else normally, so it is safe to run from day one.
+The collector prints "Website push skipped (not configured yet)" on every run.
+That is the correct state; read the line as "not wanted" rather than "not
+ready". Leave `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_TABLE`,
+`SUPABASE_SKU_COLUMN` and `SUPABASE_QTY_COLUMN` unset.
+
+`collector/website.py`, `tests/test_website.py` and `LOVABLE_PROMPT.md` are
+kept because they work and the schema behind them was confirmed against the
+live database. If the other route is ever dropped, setting those five values
+turns this back on.
 
 ---
 
@@ -223,11 +233,11 @@ decision and the stock landing in Fords.
 `current` is a derived one-row-per-SKU view, safe to overwrite, convenient for
 eyeballing and for VLOOKUPs from other sheets.
 
-Neither tab is read by the storefront. The website's stock comes from Supabase,
-written directly by `collector/website.py`; Google Sheets is for you to look at
-and for days-of-cover. That is why the run writes the feed and the website
-first and Sheets last — a Sheets outage costs one row of history, not a day of
-stale availability on the site. It still fails the run so you hear about it.
+Neither tab is read by the storefront, whose stock is maintained outside this
+pipeline (see Step 7). Google Sheets is for you to look at and for
+days-of-cover. The run still writes the feed first and Sheets last — a Sheets
+outage costs one row of history, not the day's availability figures. It still
+fails the run so you hear about it.
 
 ## Warnings the collector emits
 

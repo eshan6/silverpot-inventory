@@ -1,5 +1,11 @@
 # Connecting the feed to silverpottea.com
 
+> **Superseded — do not work through this.** As of 2026-09-29 the storefront's
+> stock is kept current by other means, outside this pipeline. This document is
+> kept as a record of the schema and the reasoning, and as a ready-made route
+> back if that other arrangement is ever dropped. Turning this on alongside it
+> would give one column two writers. See "Website push" in `CLAUDE.md`.
+
 You have an admin panel at `silverpottea.com/admin` where you type the stock
 number in each week. That means there is already a database behind your site,
 and the admin panel is just a form that writes to it.
