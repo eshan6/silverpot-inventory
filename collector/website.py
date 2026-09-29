@@ -1,5 +1,15 @@
 """Writes published availability into the website's own database.
 
+**Superseded since 2026-09-29, and deliberately left unconfigured.** The
+storefront's stock is kept current by other means now, outside this pipeline.
+`configured()` returns false because the five environment variables below are
+unset, and they should stay unset: two writers patching the same column on
+their own schedules would leave a SKU showing whichever number ran last.
+
+This module is kept rather than deleted because it works and its schema was
+confirmed against the live database. If the other route is ever dropped,
+setting those five values is the whole of turning it back on.
+
 The site already has an admin panel that writes a stock number per product.
 Rather than bolting a second source of truth onto the frontend, this writes into
 the same table that panel writes to, so the storefront's existing in-stock and
