@@ -25,6 +25,45 @@ const ROLE_LABEL: Record<Role, string> = {
   super_admin: "Super admin",
 };
 
+/**
+ * The link an invited person needs, spelled out.
+ *
+ * "Send them the link yourself" used to be the whole instruction, and there
+ * was no link anywhere on the page to send. There is no invite-specific URL
+ * to show either: sign-up is self-service against a recorded address, and the
+ * router renders the login screen on any path while signed out. So the link
+ * is the app's own origin, read from the browser rather than hardcoded, which
+ * keeps it right on a preview deployment and on localhost.
+ *
+ * clipboard.writeText needs a secure context and a permission that can be
+ * refused, so the URL is always shown as selectable text and the button is
+ * the convenience rather than the mechanism.
+ */
+function SignupLink() {
+  const url = typeof window === "undefined" ? "" : window.location.origin + "/";
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Refused or unavailable. The text is on screen to be copied by hand.
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div className="signup-link">
+      <code>{url}</code>
+      <button className="btn ghost" type="button" onClick={() => void copy()}>
+        {copied ? "Copied" : "Copy link"}
+      </button>
+    </div>
+  );
+}
+
 export default function Admin() {
   const { profile } = useSession();
   const iAmSuper = isSuper(profile?.role);
@@ -117,10 +156,12 @@ export default function Admin() {
       </div>
       <p className="footnote">
         An invite does not send an email — it records that this address may sign
-        up, and with which role. Send them the link yourself; when they sign up
-        with that address they are provisioned automatically. Anyone signing up
+        up, and with which role. Send them the link below yourself; there they
+        choose <em>Create your account</em> and sign up with the exact address
+        you recorded, which provisions them automatically. Anyone signing up
         without an invite gets an account that can see nothing.
       </p>
+      <SignupLink />
 
       <h2 className="section-head">Pending invites</h2>
       {invites === null ? (

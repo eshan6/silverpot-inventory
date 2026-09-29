@@ -195,6 +195,19 @@ td.num.over { color: var(--alert); }
   line-height: 1.6; margin-top: 0.8rem; max-width: 48rem;
 }
 
+.signup-link {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  margin-top: 0.7rem;
+}
+.signup-link code {
+  font-size: 0.85rem; color: var(--ink);
+  padding: 0.4rem 0.7rem; border-radius: 8px;
+  border: 1px solid var(--rule); background: var(--wash);
+  /* A URL is one long word, so it must be allowed to break on a narrow
+     screen rather than push the button off the row. */
+  word-break: break-all;
+}
+
 /* ----------------------------------------------------------- saved views */
 
 .views {
