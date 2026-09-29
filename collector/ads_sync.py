@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from . import ads, backfill, dashboard_db, net, orders
 
@@ -50,6 +50,25 @@ COLLECT_BUDGET_SECONDS = 8 * 60
 
 # A report id Amazon never finished is not worth carrying forever.
 PENDING_MAX_AGE_HOURS = 36
+
+# The history walk's own reports in flight, kept apart from the trailing
+# window's above.
+#
+# The walk used to call fetch_many, which polls until Amazon answers or
+# POLL_LIMIT expires. That made every backfilling run cost twenty-five minutes
+# for twenty seconds of work - run 53 spent seventeen of its eighteen minutes
+# there - and a run that timed out threw away reports Amazon had already
+# built. Two keys rather than one because the two are independent: the walk
+# must not be blocked from asking by a trailing window that is still building,
+# and neither may consume the other's ids.
+BACKFILL_PENDING_SETTING = "ads_backfill_pending"
+
+# The walk collects on the run *after* it asks, and does not sweep while it
+# waits. Amazon takes around twenty minutes, so a sweep budget of any sane
+# length would almost never turn a two-run chunk into a one-run chunk; it
+# would just lengthen every run. The walk has no deadline - it is months of
+# history reached one chunk at a time - so the next run is the retry.
+BACKFILL_COLLECT_BUDGET_SECONDS = 0.0
 
 # Advertising history is far shorter-lived than order history: Amazon keeps
 # roughly a quarter of it available for reporting, against two years of orders.
@@ -289,20 +308,35 @@ def main() -> int:
     dashboard_db.finish_run(run_id, "ok", rows_written=written)
     print(f"Wrote {written} row(s)")
 
-    # The history walk waits on its own reports, so running it while the
-    # current window is still building would stack one slow queue on another
-    # and make every run cost the sum of both. The walk has no deadline - it
-    # is months of history reached one chunk at a time - so the run that
-    # collects today's numbers is a fine one to skip it on.
-    if still_pending:
-        print("Skipping the history walk while reports are still building.")
-    elif not args.no_backfill:
+    # The walk no longer waits on Amazon, so a trailing window that is still
+    # building is no longer a reason to skip it. Skipping on those runs would
+    # stall the walk on exactly the days Amazon is slow, which is most of
+    # them. Each side carries its own reports under its own key, and neither
+    # asks for a second set while its first is in flight, so at most two sets
+    # are ever queued.
+    if not args.no_backfill:
         extend_history(token, keys, start)
     return 0
 
 
+def _chunk_days(start_iso: str, end_iso: str) -> list[date]:
+    """Rebuild a chunk's day list from the two dates stored alongside it.
+
+    `backfill.advance` wants the days, but only the ends are worth persisting:
+    a chunk is contiguous by construction, so the middle is arithmetic.
+    """
+    start = date.fromisoformat(start_iso)
+    end = date.fromisoformat(end_iso)
+    return [start + timedelta(days=i) for i in range((end - start).days + 1)]
+
+
 def extend_history(token: str, keys: list[str], oldest_covered) -> int:
-    """Reach one chunk further into advertising history.
+    """Reach one chunk further into advertising history, without waiting.
+
+    One chunk takes two runs: the first asks Amazon for the reports and writes
+    the ids down, the second collects them, writes the rows and moves the
+    cursor. Neither run blocks on Amazon's queue, which is the whole point -
+    the walk has no deadline and the runner does.
 
     Total, like its sales counterpart: this runs after the day's figures are
     written and the run is recorded as ok, so a chunk Amazon declines to serve
@@ -311,42 +345,107 @@ def extend_history(token: str, keys: list[str], oldest_covered) -> int:
     retention window announces itself, rather than being guessed at here.
     """
     try:
-        state = backfill.State.from_settings(
-            dashboard_db.get_setting(BACKFILL_SETTING))
-        chunk = backfill.next_chunk(state, start_from=oldest_covered,
-                                    today=orders.today_et(),
-                                    chunk_days=ADS_CHUNK_DAYS,
-                                    horizon_days=ADS_HORIZON_DAYS)
-        print(backfill.describe(state, chunk))
-        if not chunk:
-            if not state.done:
-                dashboard_db.set_setting(
-                    BACKFILL_SETTING,
-                    backfill.advance(state, chunk, 0,
-                                     horizon_days=ADS_HORIZON_DAYS).as_settings())
-            return 0
+        saved = dashboard_db.get_setting(BACKFILL_PENDING_SETTING) or {}
+        pending = dict(saved.get("reports") or {})
+        asked_at = saved.get("asked_at")
 
-        written = 0
-        found = 0
-        by_key = ads.fetch_many(token, keys, chunk[0], chunk[-1])
-        for key in keys:
-            spec = ads.REPORTS[key]
-            rows = by_key.get(key, [])
-            found += len(rows)
-            written += dashboard_db.upsert(TABLE_FOR_GRAIN[spec["grain"]], rows)
+        if pending and _too_old(asked_at):
+            print(f"Backfill: abandoning {len(pending)} report(s) requested "
+                  f"at {asked_at}: older than {PENDING_MAX_AGE_HOURS}h.")
+            dashboard_db.set_setting(BACKFILL_PENDING_SETTING, {})
+            pending = {}
 
-        print(f"Backfill: {written} row(s) for {chunk[0]}..{chunk[-1]}")
-        after = backfill.advance(state, chunk, found,
-                                 horizon_days=ADS_HORIZON_DAYS,
-                                 today=orders.today_et())
-        dashboard_db.set_setting(BACKFILL_SETTING, after.as_settings())
-        if after.done:
-            print(f"Backfill: finished - advertising history reaches {after.cursor}")
-        return written
+        if pending:
+            return _collect_chunk(token, saved, pending)
+        return _request_chunk(token, keys, oldest_covered)
     except Exception as exc:  # noqa: BLE001 - see docstring
         print(f"Backfill skipped this run: {net.describe_error(exc)}",
               file=sys.stderr)
         return 0
+
+
+def _request_chunk(token: str, keys: list[str], oldest_covered) -> int:
+    """Ask for the next chunk's reports and write the ids down. Writes no rows."""
+    state = backfill.State.from_settings(
+        dashboard_db.get_setting(BACKFILL_SETTING))
+    chunk = backfill.next_chunk(state, start_from=oldest_covered,
+                                today=orders.today_et(),
+                                chunk_days=ADS_CHUNK_DAYS,
+                                horizon_days=ADS_HORIZON_DAYS)
+    print(backfill.describe(state, chunk))
+    if not chunk:
+        if not state.done:
+            dashboard_db.set_setting(
+                BACKFILL_SETTING,
+                backfill.advance(state, chunk, 0,
+                                 horizon_days=ADS_HORIZON_DAYS).as_settings())
+        return 0
+
+    reports = ads.request_all(token, keys, chunk[0], chunk[-1])
+    dashboard_db.set_setting(BACKFILL_PENDING_SETTING, {
+        "reports": reports,
+        "start": chunk[0].isoformat(),
+        "end": chunk[-1].isoformat(),
+        "asked_at": _now_iso(),
+        "found": 0,
+    })
+    print(f"Backfill: requested {len(reports)} report(s); "
+          f"collecting on the next run.")
+    return 0
+
+
+def _collect_chunk(token: str, saved: dict, pending: dict) -> int:
+    """Collect a chunk already in flight. Advances the cursor only when whole."""
+    start_iso, end_iso = saved.get("start"), saved.get("end")
+    try:
+        chunk = _chunk_days(start_iso, end_iso)
+    except (TypeError, ValueError):
+        # The ids are useless without knowing which days they cover, and a
+        # cursor moved on a guess would leave a hole nothing goes back for.
+        print(f"Backfill: pending reports name no usable window "
+              f"({start_iso!r}..{end_iso!r}); dropping them and starting over.",
+              file=sys.stderr)
+        dashboard_db.set_setting(BACKFILL_PENDING_SETTING, {})
+        return 0
+
+    print(f"Backfill: collecting {len(pending)} report(s) "
+          f"for {start_iso}..{end_iso}")
+    by_key, still, _ = ads.collect(
+        token, pending, budget_seconds=BACKFILL_COLLECT_BUDGET_SECONDS)
+
+    written = 0
+    # Carried across runs, because the empty-streak rule reads it. A chunk
+    # collected over two runs would otherwise show the second run zero rows
+    # and count a busy month as empty.
+    found = int(saved.get("found") or 0)
+    for key, rows in by_key.items():
+        found += len(rows)
+        written += dashboard_db.upsert(
+            TABLE_FOR_GRAIN[ads.REPORTS[key]["grain"]], rows)
+
+    if still:
+        dashboard_db.set_setting(BACKFILL_PENDING_SETTING, {
+            "reports": still,
+            "start": start_iso,
+            "end": end_iso,
+            "asked_at": saved.get("asked_at"),
+            "found": found,
+        })
+        print(f"Backfill: {written} row(s) so far; still building: "
+              f"{', '.join(sorted(still))}. The cursor stays put.")
+        return written
+
+    dashboard_db.set_setting(BACKFILL_PENDING_SETTING, {})
+    print(f"Backfill: {written} row(s) for {start_iso}..{end_iso}")
+    state = backfill.State.from_settings(
+        dashboard_db.get_setting(BACKFILL_SETTING))
+    after = backfill.advance(state, chunk, found,
+                             horizon_days=ADS_HORIZON_DAYS,
+                             today=orders.today_et())
+    dashboard_db.set_setting(BACKFILL_SETTING, after.as_settings())
+    if after.done:
+        print(f"Backfill: finished - advertising history reaches {after.cursor}")
+    return written
 
 
 if __name__ == "__main__":
