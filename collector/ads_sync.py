@@ -70,12 +70,19 @@ BACKFILL_PENDING_SETTING = "ads_backfill_pending"
 # history reached one chunk at a time - so the next run is the retry.
 BACKFILL_COLLECT_BUDGET_SECONDS = 0.0
 
-# Advertising history is far shorter-lived than order history: Amazon keeps
-# roughly a quarter of it available for reporting, against two years of orders.
-# Like the sales horizon this is a ceiling rather than a claim - a request for
-# a range Amazon will not serve is caught and ends the walk, so being wrong
-# here costs one skipped chunk and nothing else.
-ADS_HORIZON_DAYS = 95
+# Advertising history is far shorter-lived than order history: sixty days
+# against two years of orders. Measured, not guessed - on 2026-09-29 Amazon
+# refused a 2026-07-16 start with "retention start date (2026-07-31)", which
+# is sixty days to the day.
+#
+# Still a ceiling rather than a claim, because different report types keep
+# different amounts and Amazon has moved the number before. The authority is
+# `ads.RetentionLimit`, which reads the date out of the refusal; this only
+# saves a wasted round trip on the common case. It was 95 until run 54, and
+# being too generous is not free: the walk asked for an impossible chunk,
+# extend_history swallowed the error, the cursor never moved, and it would
+# have asked for the same chunk on every run forever.
+ADS_HORIZON_DAYS = 60
 ADS_CHUNK_DAYS = 30
 
 
@@ -381,7 +388,28 @@ def _request_chunk(token: str, keys: list[str], oldest_covered) -> int:
                                  horizon_days=ADS_HORIZON_DAYS).as_settings())
         return 0
 
-    reports = ads.request_all(token, keys, chunk[0], chunk[-1])
+    try:
+        reports = ads.request_all(token, keys, chunk[0], chunk[-1])
+    except ads.RetentionLimit as limit:
+        # Amazon has named its own retention window, which beats the ceiling
+        # guessed at in ADS_HORIZON_DAYS. Without this the walk asks for the
+        # same impossible chunk on every run forever: the error is caught by
+        # extend_history's total handler, so nothing fails, and the cursor
+        # never moves because nothing was collected. Run 54 did exactly that.
+        if limit.earliest > chunk[-1]:
+            print(f"Backfill: Amazon keeps these reports only back to "
+                  f"{limit.earliest}, which is newer than this whole chunk. "
+                  f"The walk is finished.")
+            dashboard_db.set_setting(
+                BACKFILL_SETTING,
+                backfill.advance(state, [], 0,
+                                 horizon_days=ADS_HORIZON_DAYS).as_settings())
+            return 0
+        print(f"Backfill: Amazon keeps these reports only back to "
+              f"{limit.earliest}; clamping this chunk to start there.")
+        chunk = [day for day in chunk if day >= limit.earliest]
+        reports = ads.request_all(token, keys, chunk[0], chunk[-1])
+
     dashboard_db.set_setting(BACKFILL_PENDING_SETTING, {
         "reports": reports,
         "start": chunk[0].isoformat(),

@@ -313,6 +313,21 @@ run. Two things that look like details and are not:
   the first run would show the second run zero and count a busy month as
   empty. Hence `found` in the pending record.
 
+**Amazon keeps sixty days of advertising reports, and says so itself.** Run 54
+asked for 2026-07-16 and was refused with `startDate (2026-07-16) must be
+equal to or after report type data retention start date (2026-07-31)` - sixty
+days to the day. `ADS_HORIZON_DAYS` was 95 and is now 60, but the constant is
+only a way to save a wasted round trip: the authority is `ads.RetentionLimit`,
+which reads the date out of the refusal, because different report types keep
+different amounts and Amazon has moved the number before.
+
+Being too generous was not free, and this is the part worth remembering. The
+400 was caught by `extend_history`'s total handler, so nothing failed; and
+nothing was collected, so the cursor never moved. The walk would have asked
+for the same impossible chunk on every run forever, in a green run. A chunk
+that straddles the limit is now clamped to it and asked again; one wholly
+older ends the walk.
+
 The two pending sets are deliberately separate keys. Neither may consume the
 other's ids, and a trailing window that is still building must not stop the
 walk from asking - Amazon is slow most days, so skipping on those days would
