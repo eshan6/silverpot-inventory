@@ -186,7 +186,6 @@ def normalize(row: dict, spec: dict, marketplace: str = "amazon") -> dict:
         "ad_program": spec["ad_program"],
         "ad_date": _pick(row, FIELDS["ad_date"]),
         "campaign_id": str(_pick(row, FIELDS["campaign_id"]) or ""),
-        "campaign_name": _pick(row, FIELDS["campaign_name"]) or "",
         "impressions": _num(_pick(row, FIELDS["impressions"]), int),
         "clicks": _num(_pick(row, FIELDS["clicks"]), int),
         "spend": round(_num(_pick(row, FIELDS["spend"])), 2),
@@ -195,9 +194,16 @@ def normalize(row: dict, spec: dict, marketplace: str = "amazon") -> dict:
     }
 
     if spec["grain"] == "search_term":
+        # No campaign_name here. ads_search_terms does not have the column,
+        # and should not: the name is already on ads_daily for the same
+        # campaign id, the SPA builds its id-to-name map from there, and a
+        # second copy would disagree with the first the day a campaign is
+        # renamed. Sending it anyway is what failed the 2026-09-29 backfill
+        # with PGRST204 - a row key with no column behind it.
         out["search_term"] = _pick(row, FIELDS["search_term"]) or ""
         out["match_type"] = _pick(row, FIELDS["match_type"]) or ""
     else:
+        out["campaign_name"] = _pick(row, FIELDS["campaign_name"]) or ""
         out["ad_group"] = str(_pick(row, FIELDS["ad_group"]) or "")
         out["sku"] = str(_pick(row, FIELDS["sku"]) or "")
         out["asin"] = _pick(row, FIELDS["asin"])

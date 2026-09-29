@@ -265,6 +265,18 @@ So `cost` is the spend column, `sales7d` the attributed sales and
 in a campaign-grain report at all and default to empty, which is what the
 `(marketplace, ad_program, ad_date, campaign_id, ad_group, sku)` key expects.
 
+**`campaign_name` is a column on `ads_daily` only.** A search-term row carries
+`campaign_id` and joins for the name; the SPA already builds its id-to-name
+map from `ads_daily`. `normalize()` put the name on every row until
+2026-09-29, when the backfill collected its rows and then died on the write
+with `PGRST204: Could not find the 'campaign_name' column of
+'ads_search_terms'`. The row shape is built in Python and the columns are
+declared in SQL, and nothing reconciled the two until PostgREST refused.
+`tests/test_ads_schema.py` now reads the columns out of the migrations and
+fails on any key with no column behind it - add the column in SQL and it is
+allowed immediately, add the key in Python alone and it fails locally rather
+than twenty minutes into a run.
+
 **Amazon's reports are slow and the job does not wait for them.** The first
 report on this account took over twenty-five minutes; two runs failed on
 timeouts before the design changed. A run now requests its reports, collects
