@@ -251,6 +251,28 @@ cd dashboard/web && npm run build              # tsc under strict, then vite
 reports and `spend` in others, and this repository has already lost time to
 nine wrong guesses at a Walmart field name.
 
+That probe has now run against the live account (2026-09-29). Sponsored
+Products reports carry exactly these keys, and every one hits the first
+candidate in `FIELDS`:
+
+```
+campaignId  campaignName  clicks  cost  date  impressions
+purchases7d  sales7d   (+ matchType, searchTerm on the search-term report)
+```
+
+So `cost` is the spend column, `sales7d` the attributed sales and
+`purchases7d` the attributed units. `adGroupName`, `sku` and `asin` are not
+in a campaign-grain report at all and default to empty, which is what the
+`(marketplace, ad_program, ad_date, campaign_id, ad_group, sku)` key expects.
+
+**Amazon's reports are slow and the job does not wait for them.** The first
+report on this account took over twenty-five minutes; two runs failed on
+timeouts before the design changed. A run now requests its reports, collects
+whatever is ready within eight minutes, and saves the rest as pending for the
+next run - so a slow queue costs time and never a failed run. `ads.collect`
+carries not-ready reports and still raises on failed ones; the two are
+different answers.
+
 Credentials come from environment variables. Locally, put them in `.env`
 (already gitignored) and source it. In CI they are GitHub Actions secrets.
 

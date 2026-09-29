@@ -18,7 +18,7 @@ issuing.
 | Sales: fetch, Eastern-day bucketing, aggregation | **built and tested** |
 | Sales: writing into Supabase + scheduled workflow | **built** |
 | Invites + first super admin, without a server | **built and tested** |
-| Ads ingestion (Advertising API, all three programs) | **built**, waiting on the API approval |
+| Ads ingestion (Advertising API, all three programs) | **live** — approved 2026-09-29, field names confirmed against real rows |
 | Frontend: Sales, Ads, Spend, saved views | **built** |
 | Admin UI (people, invites, audit log) | **built** |
 | One-paste Supabase setup | **built and tested** |
