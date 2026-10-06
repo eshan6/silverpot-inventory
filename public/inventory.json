@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T12:13:21+00:00",
+  "generated_at": "2026-10-06T11:59:13+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -21,7 +21,7 @@
       "fba": 18,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 20.1,
+      "days_of_cover": 40.2,
       "inbound": 120
     },
     {
@@ -306,7 +306,7 @@
       "fba": 13,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 34.7,
+      "days_of_cover": 52.0,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 10,
+      "available": 8,
       "in_stock": true,
-      "fba": 10,
+      "fba": 8,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 7.3,
+      "days_of_cover": 4.9,
       "inbound": 12
     },
     {
@@ -466,12 +466,12 @@
       "sku": "Y5-C6HY-68LV",
       "asin": "B0DLWTG5XN",
       "website_product_id": "",
-      "available": 11,
+      "available": 10,
       "in_stock": true,
-      "fba": 6,
+      "fba": 5,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 88.0,
+      "days_of_cover": 40.0,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 98,
       "wfs": 80,
       "buffer": 0,
-      "days_of_cover": 474.7,
+      "days_of_cover": 712.0,
       "inbound": 0
     },
     {
@@ -526,12 +526,12 @@
       "sku": "M6-VQP9-KZDY",
       "asin": "",
       "website_product_id": "",
-      "available": 131,
+      "available": 129,
       "in_stock": true,
       "fba": 102,
-      "wfs": 29,
+      "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 262.0,
+      "days_of_cover": 206.4,
       "inbound": 120
     },
     {
