@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-06T11:59:13+00:00",
+  "generated_at": "2026-10-07T11:44:02+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 23,
+      "available": 22,
       "in_stock": true,
-      "fba": 18,
+      "fba": 17,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 40.2,
+      "days_of_cover": 35.2,
       "inbound": 120
     },
     {
@@ -351,7 +351,7 @@
       "fba": 0,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 0.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -361,12 +361,12 @@
       "sku": "DL-EEDT-MG20",
       "asin": "B0DLWRZ5NY",
       "website_product_id": "",
-      "available": 23,
+      "available": 22,
       "in_stock": true,
-      "fba": 20,
+      "fba": 19,
       "wfs": 3,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 176.0,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 8,
+      "available": 7,
       "in_stock": true,
-      "fba": 8,
+      "fba": 7,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 4.9,
+      "days_of_cover": 4.3,
       "inbound": 12
     },
     {
@@ -526,12 +526,12 @@
       "sku": "M6-VQP9-KZDY",
       "asin": "",
       "website_product_id": "",
-      "available": 129,
+      "available": 128,
       "in_stock": true,
-      "fba": 102,
+      "fba": 101,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 206.4,
+      "days_of_cover": 170.7,
       "inbound": 120
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 150,
+      "available": 149,
       "in_stock": true,
-      "fba": 123,
+      "fba": 122,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 400.0,
+      "days_of_cover": 298.0,
       "inbound": 108
     }
   ]
