@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-08T11:58:59+00:00",
+  "generated_at": "2026-10-09T11:51:01+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -276,7 +276,7 @@
       "fba": 22,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 14.7,
+      "days_of_cover": 19.6,
       "inbound": 12
     },
     {
@@ -306,7 +306,7 @@
       "fba": 13,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 52.0,
+      "days_of_cover": 104.0,
       "inbound": 0
     },
     {
@@ -376,12 +376,12 @@
       "sku": "06-2F24-Y8AJ",
       "asin": "B0DLV3KKSQ",
       "website_product_id": "",
-      "available": 3,
-      "in_stock": true,
-      "fba": 3,
+      "available": 0,
+      "in_stock": false,
+      "fba": 0,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 2.2,
+      "days_of_cover": 0.0,
       "inbound": 12
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 149,
+      "available": 145,
       "in_stock": true,
-      "fba": 122,
+      "fba": 118,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 298.0,
+      "days_of_cover": 193.3,
       "inbound": 108
     }
   ]
