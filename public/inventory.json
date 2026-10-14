@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-13T12:39:29+00:00",
+  "generated_at": "2026-10-14T10:06:38+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -256,9 +256,9 @@
       "sku": "AC-CV35-SHRN",
       "asin": "B0DLTZXRV6",
       "website_product_id": "",
-      "available": 0,
-      "in_stock": false,
-      "fba": 0,
+      "available": 1,
+      "in_stock": true,
+      "fba": 1,
       "wfs": 0,
       "buffer": 0,
       "days_of_cover": null,
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 16,
+      "available": 13,
       "in_stock": true,
-      "fba": 16,
+      "fba": 13,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 18.3,
+      "days_of_cover": 10.4,
       "inbound": 12
     },
     {
@@ -316,12 +316,12 @@
       "sku": "9J-T8HS-C66T",
       "asin": "B0DLV1PB82",
       "website_product_id": "",
-      "available": 23,
+      "available": 24,
       "in_stock": true,
-      "fba": 23,
+      "fba": 24,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 61.3,
+      "days_of_cover": 56.0,
       "inbound": 0
     },
     {
@@ -471,7 +471,7 @@
       "fba": 2,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 14.0,
+      "days_of_cover": 18.7,
       "inbound": 0
     },
     {
@@ -511,12 +511,12 @@
       "sku": "X4-NBPO-69NU",
       "asin": "",
       "website_product_id": "",
-      "available": 178,
+      "available": 177,
       "in_stock": true,
       "fba": 98,
-      "wfs": 80,
+      "wfs": 79,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 1416.0,
       "inbound": 0
     },
     {
@@ -526,12 +526,12 @@
       "sku": "M6-VQP9-KZDY",
       "asin": "",
       "website_product_id": "",
-      "available": 127,
+      "available": 124,
       "in_stock": true,
-      "fba": 100,
+      "fba": 97,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 177.8,
+      "days_of_cover": 144.7,
       "inbound": 120
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 144,
+      "available": 143,
       "in_stock": true,
-      "fba": 117,
+      "fba": 116,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 144.0,
+      "days_of_cover": 125.1,
       "inbound": 108
     }
   ]
