@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-16T09:42:16+00:00",
+  "generated_at": "2026-10-17T09:15:36+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 18,
+      "available": 25,
       "in_stock": true,
-      "fba": 13,
+      "fba": 20,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 36.0,
+      "days_of_cover": 43.8,
       "inbound": 0
     },
     {
@@ -381,7 +381,7 @@
       "fba": 0,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 0.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -466,12 +466,12 @@
       "sku": "Y5-C6HY-68LV",
       "asin": "B0DLWTG5XN",
       "website_product_id": "",
-      "available": 7,
+      "available": 5,
       "in_stock": true,
-      "fba": 2,
+      "fba": 0,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 28.0,
+      "days_of_cover": 10.0,
       "inbound": 0
     },
     {
@@ -511,12 +511,12 @@
       "sku": "X4-NBPO-69NU",
       "asin": "",
       "website_product_id": "",
-      "available": 176,
+      "available": 155,
       "in_stock": true,
-      "fba": 98,
-      "wfs": 78,
+      "fba": 78,
+      "wfs": 77,
       "buffer": 0,
-      "days_of_cover": 704.0,
+      "days_of_cover": 53.9,
       "inbound": 0
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 142,
+      "available": 147,
       "in_stock": true,
-      "fba": 115,
+      "fba": 120,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 124.2,
+      "days_of_cover": 220.5,
       "inbound": 0
     }
   ]
