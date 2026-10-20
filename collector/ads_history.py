@@ -76,8 +76,31 @@ def _millis(when: datetime) -> int:
     return int(when.timestamp() * 1000)
 
 
+# How `eventTypes` is encoded. Round three sent Amazon's own enumerated list
+# back to it verbatim, as a JSON array of strings, and was refused:
+#
+#   Key in HistoryEventTypes: 0 is not supported. Needs to be one of
+#   CAMPAIGN,AD_GROUP,...
+#
+# The `0` is the interesting part. It is reporting a *key* of 0 - the array
+# index - rather than the value at that index, and an empty array was
+# accepted where a populated one was not. That is what a deserialiser does
+# when it wanted a map and got a list: an empty list and an empty map look
+# alike, a populated one does not. So the encoding is the open question, not
+# the vocabulary.
+def _event_type_encodings() -> list[tuple[str, object]]:
+    return [
+        ("array of strings (the round-three control)", list(RECORD_TYPES)),
+        ("map of name to true", {t: True for t in RECORD_TYPES}),
+        ("comma-separated string", ",".join(RECORD_TYPES)),
+        ("array of objects", [{"eventType": t} for t in RECORD_TYPES]),
+        ("map of index to name", {str(i): t for i, t in enumerate(RECORD_TYPES)}),
+        ("single string", RECORD_TYPES[0]),
+    ]
+
+
 def _request(token: str, start: datetime, end: datetime, sess,
-             page: int = 0, page_size: int = 50):
+             page: int = 0, page_size: int = 50, event_types=None):
     """One history request. Confirmed shape, retried through a 429.
 
     Rate limiting is real here: round two fired five requests back to back and
@@ -88,7 +111,7 @@ def _request(token: str, start: datetime, end: datetime, sess,
     body = {
         "fromDate": _millis(start),
         "toDate": _millis(end),
-        "eventTypes": RECORD_TYPES,
+        "eventTypes": list(RECORD_TYPES) if event_types is None else event_types,
         "pageSize": page_size,
         "pageOffset": page * page_size,
     }
@@ -219,13 +242,40 @@ def probe(days: int = HISTORY_RETENTION_DAYS, sess=None) -> int:
     print("Values are redacted: these logs are public and change history "
           "carries keyword text and bids.\n")
 
-    resp, body = _request(token, start, end, sess)
-    print(f"HTTP {resp.status_code}  (sent keys: {sorted(body)})")
-    if resp.status_code >= 400:
-        print(f"body: {(resp.text or '')[:700]}")
-        return 1
+    # Round four: find the encoding `eventTypes` wants, one request at a
+    # time with a pause between, because the limiter here is tight enough
+    # that back-to-back probes answer 429 and look like refusals.
+    payload = None
+    for label, encoding in _event_type_encodings():
+        resp, body = _request(token, start, end, sess, event_types=encoding)
+        sent = body["eventTypes"]
+        print(f"[{label}] HTTP {resp.status_code}  eventTypes={_shape(sent)}")
+        if resp.status_code >= 400:
+            print(f"    {(resp.text or '')[:260]}")
+            time.sleep(3)
+            continue
+        try:
+            candidate = resp.json()
+        except ValueError:
+            print("    200 but not JSON")
+            time.sleep(3)
+            continue
+        total = candidate.get("totalRecords")
+        print(f"    accepted; totalRecords={total}")
+        # An empty answer is not proof the encoding worked - the empty array
+        # in round two was accepted and returned nothing, which is exactly
+        # what a silently-ignored filter looks like. Prefer an encoding that
+        # actually brings records back, and keep looking otherwise.
+        if payload is None or (total or 0) > (payload.get("totalRecords") or 0):
+            payload = candidate
+        if total:
+            print("    records returned - this is the encoding.\n")
+            break
+        time.sleep(3)
 
-    payload = resp.json()
+    if payload is None:
+        print("\nNo encoding was accepted. The bodies above are the evidence.")
+        return 1
     print(f"envelope keys : {sorted(payload)}")
     for k in ("totalRecords", "pageSize", "pageOffset", "maxPageNumber"):
         if k in payload:
@@ -285,8 +335,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe", action="store_true",
                     help="send the candidate requests and print what returns")
-    ap.add_argument("--days", type=int, default=7,
-                    help="how far back the probe window reaches (default 7)")
+    ap.add_argument("--days", type=int, default=HISTORY_RETENTION_DAYS,
+                    help="how far back the probe window reaches (default 90, Amazon.s retention window)")
     args = ap.parse_args()
 
     if not ads.configured():

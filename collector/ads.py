@@ -143,6 +143,24 @@ REPORTS: dict[str, dict] = {
         "columns": ["date", "campaignId", "campaignName", "impressions",
                     "clicks", "cost", "purchases7d", "sales7d"],
     },
+    # Per advertised ASIN, the same window and the same attribution columns as
+    # sp_campaigns above - purchases7d and sales7d, so the two are comparable
+    # and ads_by_asin can be read against ads_summary without converting.
+    #
+    # It lands in its own table, not in ads_daily. ads_summary sums that table
+    # grouped only by (marketplace, ad_program) and does not filter by grain,
+    # so campaign rows and product rows side by side would count the same
+    # spend twice. See 0005_ads_history.sql.
+    "sp_advertised_product": {
+        "ad_program": "sponsored_products",
+        "grain": "advertised_product",
+        "adProduct": "SPONSORED_PRODUCTS",
+        "reportTypeId": "spAdvertisedProduct",
+        "groupBy": ["advertiser"],
+        "columns": ["date", "campaignId", "campaignName", "adGroupName",
+                    "advertisedAsin", "advertisedSku", "impressions",
+                    "clicks", "cost", "purchases7d", "sales7d"],
+    },
     "sp_search_terms": {
         "ad_program": "sponsored_products",
         "grain": "search_term",

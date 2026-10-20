@@ -187,6 +187,9 @@ class TestNormalizedRowsFitTheirTable(unittest.TestCase):
                           "campaign_id", "ad_group", "sku"},
             "ads_search_terms": {"marketplace", "ad_program", "ad_date",
                                  "campaign_id", "search_term", "match_type"},
+            "ads_advertised_product": {"marketplace", "ad_program", "ad_date",
+                                       "campaign_id", "ad_group", "asin",
+                                       "sku"},
         }
         for key, spec in ads.REPORTS.items():
             row = ads.normalize(sample_row(), spec)
@@ -213,6 +216,54 @@ class TestNormalizedRowsFitTheirTable(unittest.TestCase):
         spec = ads.REPORTS["sp_search_terms"]
         self.assertEqual(ads.normalize(sample_row(), spec)["campaign_id"],
                          "123456789")
+
+
+class TestNoTwoGrainsShareATable(unittest.TestCase):
+    """The guard that keeps every spend figure honest.
+
+    `ads_summary` reads `ads_daily` and sums it grouped only by
+    (marketplace, ad_program). It does not filter by grain, because until the
+    advertised-product report there was only one. Put a second grain in that
+    table and the same spend is counted twice - once under the campaign, once
+    under the ASIN - and nothing errors, because the primary key carries
+    `sku` so the rows insert cleanly beside each other.
+
+    That is the failure this project cares about most: not a crash, but a
+    number that looks right and is double.
+    """
+
+    def test_each_grain_writes_to_its_own_table(self):
+        seen = {}
+        for key, spec in ads.REPORTS.items():
+            grain, table = spec["grain"], TABLE_FOR_GRAIN[spec["grain"]]
+            if table in seen:
+                self.assertEqual(
+                    seen[table], grain,
+                    f"{key} writes {grain} into {table}, which already holds "
+                    f"{seen[table]} - two grains in one table double its sums")
+            seen[table] = grain
+
+    def test_the_advertised_product_grain_is_not_ads_daily(self):
+        # Named explicitly, because this is the one that would be tempting:
+        # ads_daily already has asin and sku columns sitting empty.
+        self.assertEqual(TABLE_FOR_GRAIN["advertised_product"],
+                         "ads_advertised_product")
+        self.assertNotEqual(TABLE_FOR_GRAIN["advertised_product"],
+                            TABLE_FOR_GRAIN["campaign"])
+
+    def test_every_grain_in_use_has_a_table(self):
+        for key, spec in ads.REPORTS.items():
+            self.assertIn(spec["grain"], TABLE_FOR_GRAIN, key)
+
+    def test_the_two_sp_grains_carry_the_same_attribution_window(self):
+        # ads_by_asin is meant to be readable against ads_summary. If one
+        # grain reported 7-day attribution and the other 14-day, the two
+        # would disagree for reasons no one would think to look for.
+        campaign = set(ads.REPORTS["sp_campaigns"]["columns"])
+        product = set(ads.REPORTS["sp_advertised_product"]["columns"])
+        for metric in ("cost", "purchases7d", "sales7d"):
+            self.assertIn(metric, campaign)
+            self.assertIn(metric, product)
 
 
 class TestSetupSqlAgreesWithTheMigrations(unittest.TestCase):
