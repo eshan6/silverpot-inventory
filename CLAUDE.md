@@ -360,6 +360,42 @@ out of `collector/ads_history.py --probe` against the live account on
   one correct candidate look like a refusal. The probe backs off, and so must
   anything that pages.
 
+**And where it is still stuck.** Every *non-empty* `eventTypes` filter is
+refused with `Key in HistoryEventTypes: 0 is not supported. Needs to be one
+of CAMPAIGN,AD_GROUP,...` - the same eight values the message itself names.
+An empty filter is accepted and returns an empty page. Eleven request
+variants over six rounds have now drawn that identical message: three field
+spellings, six encodings of the value (array of strings, map of name to true,
+comma-separated string, array of objects, map of index to name, bare string)
+and three media types including `application/vnd.history.v1+json`. The map
+encoding mattering most: it drew the *same* `0`, which kills the reading that
+`0` was an array index and a map was wanted. The `0` does not reflect the
+request at all, so it is a constant in a message template and carries no
+information about the shape. **Do not spend a seventh round guessing
+encodings** - that is the "nine wrong guesses at a Walmart field name"
+failure, repeated knowingly.
+
+Two sources that look like they should settle it and do not:
+
+- Amazon's merged OpenAPI specification covers the `/adsApi/v1/...` surface
+  only. There is no `/history` path and no `HistoryEventTypes` schema
+  anywhere in it, so `/history` is not part of v1 and the spec cannot
+  describe it.
+- The Ads betas are MCP Tools, Inventory API, Events, Linked accounts,
+  Account link invites and Review Requests. Change History is **not** a beta,
+  so there is no opt-in to find and no entitlement to request.
+
+What is left untried, and what `collector/ads_mcp.py --probe` does: Amazon
+runs an MCP server over the same Ads credentials
+(`advertising-ai.amazon.com/mcp` and `/mcp/lite`, scope
+`advertising::campaign_management`, which this app already holds), and an MCP
+server publishes a JSON schema for every tool it exposes. If change history
+is among them, `tools/list` hands over the argument names and the enum from
+Amazon rather than from a guess. It lists tools and calls none, so no
+advertising figure reaches the public log. Run it from the `ads` workflow with
+`mcp_probe`. If that comes back without a history tool, the remaining route is
+an Amazon support case quoting the refusal verbatim, not more probing.
+
 **The probe redacts values, not just secrets.** It prints field names, types
 and sizes and withholds the content, because change history carries campaign
 names, keyword text and bids - the whole advertising strategy - and this

@@ -17,6 +17,13 @@ the winning candidate is the one to keep and the rest should be deleted.
 
 Nothing here writes to the database until that has happened.
 
+Where it stands: the envelope and the window are settled, the `eventTypes`
+filter is not. Eleven variants over six rounds all draw the same refusal, and
+Amazon's merged OpenAPI specification does not describe this endpoint at all
+(it covers `/adsApi/v1/...` only). `collector/ads_mcp.py` asks Amazon's own
+MCP server for the schema instead of guessing a seventh encoding. Read the
+"And where it is still stuck" section of CLAUDE.md before adding a twelfth.
+
 Amazon keeps roughly ninety days of change history and deletes the rest, so
 the backfill is worth running once and promptly; a day missed past the window
 is gone for good, unlike the reporting data, which can be re-read.
