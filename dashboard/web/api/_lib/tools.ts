@@ -373,7 +373,7 @@ function nextDay(iso: string): string {
  * both. They read different tables on purpose - see 0005_ads_history.sql -
  * and the one thing that must not differ is how the numbers are added up.
  */
-function rollUp(
+export function rollUp(
   rows: AdGrainRow[],
   key: (r: AdGrainRow) => string,
   label: (r: AdGrainRow) => Record<string, string | null>,
@@ -402,7 +402,7 @@ function rollUp(
       (cur["attributed_units"] as number) + (Number(r.attributed_units) || 0);
   }
   return [...by.values()]
-    .map((r) => ({
+    .map((r): Record<string, unknown> => ({
       ...r,
       // Rounded once, at the end. Rounding each row first and then adding
       // would drift away from ads_summary, which rounds the same way.
@@ -411,6 +411,45 @@ function rollUp(
     }))
     .sort((a, b) => (b["spend"] as number) - (a["spend"] as number))
     .slice(0, limit);
+}
+
+/**
+ * ads_summary's totals, as a pure function.
+ *
+ * Extracted so that its agreement with `rollUp` can be tested on the same
+ * rows without a database. The two must agree: `ads_by_campaign` is the same
+ * spend as `ads_summary`, cut finer, and a reader who adds up the campaigns
+ * and gets a different total than the summary has no way to tell which one
+ * is lying. Both therefore sum raw values and round once at the end.
+ */
+export function summariseAds(rows: AdGrainRow[]) {
+  const by = new Map<string, Record<string, number>>();
+  for (const r of rows) {
+    const key = `${r.marketplace}:${r.ad_program}`;
+    const cur = by.get(key) ?? {
+      impressions: 0, clicks: 0, spend: 0,
+      attributed_sales: 0, attributed_units: 0,
+    };
+    cur["impressions"] = (cur["impressions"] ?? 0) + (Number(r.impressions) || 0);
+    cur["clicks"] = (cur["clicks"] ?? 0) + (Number(r.clicks) || 0);
+    cur["spend"] = (cur["spend"] ?? 0) + (Number(r.spend) || 0);
+    cur["attributed_sales"] =
+      (cur["attributed_sales"] ?? 0) + (Number(r.attributed_sales) || 0);
+    cur["attributed_units"] =
+      (cur["attributed_units"] ?? 0) + (Number(r.attributed_units) || 0);
+    by.set(key, cur);
+  }
+  return [...by.entries()].map(([key, t]) => {
+    const [marketplace, ad_program] = key.split(":");
+    return {
+      marketplace, ad_program,
+      impressions: t["impressions"] ?? 0,
+      clicks: t["clicks"] ?? 0,
+      spend: round(t["spend"] ?? 0),
+      attributed_sales: round(t["attributed_sales"] ?? 0),
+      attributed_units: t["attributed_units"] ?? 0,
+    };
+  });
 }
 
 async function freshness() {
@@ -506,11 +545,7 @@ export async function callTool(
 
     case "ads_summary": {
       const { query } = range(args, "ad_date");
-      const rows = await select<{
-        marketplace: string; ad_program: string; impressions: number;
-        clicks: number; spend: number; attributed_sales: number;
-        attributed_units: number;
-      }>(
+      const rows = await select<AdGrainRow>(
         "ads_daily",
         {
           ...query,
@@ -519,36 +554,9 @@ export async function callTool(
         },
         ROW_CAP,
       );
-      const by = new Map<string, Record<string, number>>();
-      for (const r of rows) {
-        const key = `${r.marketplace}:${r.ad_program}`;
-        const cur = by.get(key) ?? {
-          impressions: 0, clicks: 0, spend: 0,
-          attributed_sales: 0, attributed_units: 0,
-        };
-        cur["impressions"] = (cur["impressions"] ?? 0) + (Number(r.impressions) || 0);
-        cur["clicks"] = (cur["clicks"] ?? 0) + (Number(r.clicks) || 0);
-        cur["spend"] = (cur["spend"] ?? 0) + (Number(r.spend) || 0);
-        cur["attributed_sales"] =
-          (cur["attributed_sales"] ?? 0) + (Number(r.attributed_sales) || 0);
-        cur["attributed_units"] =
-          (cur["attributed_units"] ?? 0) + (Number(r.attributed_units) || 0);
-        by.set(key, cur);
-      }
-      const programs = [...by.entries()].map(([key, t]) => {
-        const [marketplace, ad_program] = key.split(":");
-        return {
-          marketplace, ad_program,
-          impressions: t["impressions"] ?? 0,
-          clicks: t["clicks"] ?? 0,
-          spend: round(t["spend"] ?? 0),
-          attributed_sales: round(t["attributed_sales"] ?? 0),
-          attributed_units: t["attributed_units"] ?? 0,
-        };
-      });
       return {
         range: { from: args["from"], to: args["to"] },
-        programs,
+        programs: summariseAds(rows),
         note:
           rows.length === 0
             ? "No advertising rows in this range. Amazon Ads is live, so check data_freshness before reading this as no spend; Walmart advertising has no available API route."
@@ -592,6 +600,13 @@ export async function callTool(
       );
       return {
         range: { from: args["from"], to: args["to"] },
+        // Summed from raw values and rounded once, so this equals
+        // ads_summary exactly. The per-campaign figures below are each
+        // rounded for reading, and rounded parts do not always add up to the
+        // rounded whole - three campaigns at .115, .225 and .75 sum to
+        // 137.09 but read as 137.10. Reporting the total here is what stops
+        // that penny turning into doubt about which tool is wrong.
+        totals: summariseAds(rows),
         campaigns: rollUp(
           rows,
           (r) => r.campaign_id ?? "",
@@ -626,6 +641,10 @@ export async function callTool(
       }
       return {
         range: { from: args["from"], to: args["to"] },
+        // As in ads_by_campaign: summed raw and rounded once, so the total
+        // is comparable with ads_summary even though the rows below are
+        // each rounded.
+        totals: summariseAds(rows),
         // Keyed by ASIN and SKU together, because one ASIN is advertised
         // under more than one seller SKU here - the stickerless conversion
         // issued a second one - and collapsing them would hide that split.
