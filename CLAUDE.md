@@ -360,6 +360,72 @@ out of `collector/ads_history.py --probe` against the live account on
   one correct candidate look like a refusal. The probe backs off, and so must
   anything that pages.
 
+**And where it is still stuck.** Every *non-empty* `eventTypes` filter is
+refused with `Key in HistoryEventTypes: 0 is not supported. Needs to be one
+of CAMPAIGN,AD_GROUP,...` - the same eight values the message itself names.
+An empty filter is accepted and returns an empty page. Eleven request
+variants over six rounds have now drawn that identical message: three field
+spellings, six encodings of the value (array of strings, map of name to true,
+comma-separated string, array of objects, map of index to name, bare string)
+and three media types including `application/vnd.history.v1+json`. The map
+encoding mattering most: it drew the *same* `0`, which kills the reading that
+`0` was an array index and a map was wanted. The `0` does not reflect the
+request at all, so it is a constant in a message template and carries no
+information about the shape. **Do not spend a seventh round guessing
+encodings** - that is the "nine wrong guesses at a Walmart field name"
+failure, repeated knowingly.
+
+Two sources that look like they should settle it and do not:
+
+- Amazon's merged OpenAPI specification covers the `/adsApi/v1/...` surface
+  only. There is no `/history` path and no `HistoryEventTypes` schema
+  anywhere in it, so `/history` is not part of v1 and the spec cannot
+  describe it.
+- The Ads betas are MCP Tools, Inventory API, Events, Linked accounts,
+  Account link invites and Review Requests. Change History is **not** a beta,
+  so there is no opt-in to find and no entitlement to request.
+
+The third source, asked and answered. Amazon runs an MCP server over these
+same Ads credentials, and an MCP server publishes a JSON schema per tool, so
+`collector/ads_mcp.py --probe` asked it for the enum instead of guessing a
+seventh encoding. Both endpoints answer with no extra setup (run 104,
+2026-10-20):
+
+```
+lite  advertising-ai.amazon.com/mcp/lite   Amazon Ads MCP Server (Tool Search)    3 tools
+full  advertising-ai.amazon.com/mcp        Amazon Ads MCP Server                110 tools
+```
+
+The 110 cover campaign management, reporting, AMC, billing, account and user
+management, Amazon Live and promotions. **None of them is change history** -
+no `history`, `change`, `audit` or `revision` tool in the set. So the MCP
+route does not expose it and `POST /history` stays the only surface that
+does. The probe lists tools and calls none, so no advertising figure reaches
+the public log.
+
+The lite endpoint turned out to be a tool-*search* server
+(`search_tools`, `describe_tools`, `invoke_tool`), which is Amazon's own index
+of its own catalogue. `ads_mcp --search` asks it by what a tool does rather
+than reading 110 names and judging by eye; the `ads` workflow takes the query
+as `mcp_search`. That search is the only tool this module *calls*, and it is
+safe only because its result is a catalogue of names and descriptions. **Do
+not extend it to a tool that returns account data while these logs are
+public.**
+
+Asked point-blank for `change history audit log of past edits: who changed a
+campaign, ad group, keyword or bid, and when`, the index returned
+`campaign_management` at confidence 1.0 and offered the tools that *make*
+changes - update, create, delete, query - plus `ads_accounts` and
+`user_invitation`. Nothing that reads past changes, which is the same answer
+`tools/list` gave, now from Amazon's own matcher rather than from reading 110
+names.
+
+With all four sources exhausted - the endpoint itself, the OpenAPI
+specification, the betas list and the MCP catalogue - the remaining route is
+an Amazon support case quoting the refusal verbatim, not a twelfth request
+variant. `ADS_HISTORY_SUPPORT_CASE.md` is that case, written out and ready to
+paste.
+
 **The probe redacts values, not just secrets.** It prints field names, types
 and sizes and withholds the content, because change history carries campaign
 names, keyword text and bids - the whole advertising strategy - and this

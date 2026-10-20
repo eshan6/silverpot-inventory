@@ -43,6 +43,14 @@ on:
         description: "Ask the Ads change history endpoint which request shape it accepts. Reads only, writes nothing."
         type: boolean
         default: false
+      mcp_probe:
+        description: "Ask Amazon's Ads MCP server to list its tools, for a change-history schema. Reads only, writes nothing."
+        type: boolean
+        default: false
+      mcp_search:
+        description: "Ask Amazon's own tool index which tool does this, e.g. 'change history'. Reads only, writes nothing."
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -99,8 +107,40 @@ jobs:
           FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
         run: python -m collector.ads_history --probe
 
+      # The same question asked of a different surface. POST /history refuses
+      # every non-empty eventTypes filter with a message that does not reflect
+      # the request, and Amazon's merged OpenAPI specification covers the
+      # /adsApi/v1 surface only and does not describe /history at all. An MCP
+      # server publishes a schema per tool, so this asks Amazon for the enum
+      # instead of guessing a seventh encoding of it. Lists tools; calls none.
+      - name: Ask Amazon's Ads MCP server to list its tools
+        if: ${{ inputs.mcp_probe == true }}
+        env:
+          ADS_CLIENT_ID: ${{ secrets.ADS_CLIENT_ID }}
+          ADS_CLIENT_SECRET: ${{ secrets.ADS_CLIENT_SECRET }}
+          ADS_REFRESH_TOKEN: ${{ secrets.ADS_REFRESH_TOKEN }}
+          ADS_PROFILE_ID: ${{ secrets.ADS_PROFILE_ID }}
+          FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
+        run: python -m collector.ads_mcp --probe
+
+      # The lite endpoint is a tool-search server over the same visible set,
+      # so this asks Amazon's own index by what a tool does rather than
+      # judging 110 names by eye. It is the one tool call this module makes,
+      # and it is safe because the result is a catalogue of names and
+      # descriptions and carries no Silverpot figure.
+      - name: Ask Amazon's own tool index which tool does this
+        if: ${{ inputs.mcp_search != '' }}
+        env:
+          ADS_CLIENT_ID: ${{ secrets.ADS_CLIENT_ID }}
+          ADS_CLIENT_SECRET: ${{ secrets.ADS_CLIENT_SECRET }}
+          ADS_REFRESH_TOKEN: ${{ secrets.ADS_REFRESH_TOKEN }}
+          ADS_PROFILE_ID: ${{ secrets.ADS_PROFILE_ID }}
+          FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
+          MCP_SEARCH: ${{ inputs.mcp_search }}
+        run: python -m collector.ads_mcp --search "$MCP_SEARCH"
+
       - name: Pull advertising into the dashboard
-        if: ${{ inputs.walmart_diagnose != true && inputs.history_probe != true }}
+        if: ${{ inputs.walmart_diagnose != true && inputs.history_probe != true && inputs.mcp_probe != true && inputs.mcp_search == '' }}
         env:
           # Advertising credentials are their own set. They are not the SP-API
           # ones under a different name: different registration, different
