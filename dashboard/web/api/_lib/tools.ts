@@ -15,7 +15,7 @@
 // means "no sales" or "the pipeline did not run", and this project has
 // already published stale numbers once without saying so.
 
-import { select } from "./db.js";
+import { DbError, select } from "./db.js";
 
 const ROW_CAP = 20000;
 const MARKETPLACES = ["amazon", "walmart"] as const;
@@ -270,6 +270,42 @@ interface FreshnessRow {
   started_at: string;
   finished_at: string | null;
 }
+
+/**
+ * A select that tolerates the table not existing yet.
+ *
+ * `ads_advertised_product` and `ads_change_history` arrive in migration
+ * 0005, which has to be applied to the Supabase project by hand - PostgREST
+ * carries no DDL. Until someone runs it, PostgREST answers "could not find
+ * the table in the schema cache", and letting that reach an MCP client as a
+ * raw Postgres string is both confusing and a small leak of schema detail.
+ * A reader is better served by being told the pipeline has not been
+ * provisioned than by a stack trace.
+ *
+ * Only a missing table is softened. Every other database error still throws:
+ * a permissions failure or a timeout returning "no rows" would be a wrong
+ * answer dressed as an empty one, which is the thing this project refuses to
+ * do.
+ */
+async function selectIfProvisioned<T>(
+  table: string,
+  query: Record<string, string>,
+  limit: number,
+): Promise<T[] | null> {
+  try {
+    return await select<T>(table, query, limit);
+  } catch (err) {
+    if (err instanceof DbError && (err.status === 404 || err.status === 400)) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+const NOT_PROVISIONED =
+  "This table does not exist yet. Migration 0005_ads_history.sql has not " +
+  "been applied to the dashboard's Supabase project, so nothing has been " +
+  "ingested into it. This is a setup step, not an empty result.";
 
 interface AdGrainRow {
   marketplace: string;
@@ -571,7 +607,7 @@ export async function callTool(
     case "ads_by_asin": {
       const limit = cap(args, 50);
       const { query } = range(args, "ad_date");
-      const rows = await select<AdGrainRow>(
+      const rows = await selectIfProvisioned<AdGrainRow>(
         "ads_advertised_product",
         {
           ...query,
@@ -581,6 +617,13 @@ export async function callTool(
         },
         ROW_CAP,
       );
+      if (rows === null) {
+        return {
+          range: { from: args["from"], to: args["to"] },
+          asins: [],
+          note: NOT_PROVISIONED,
+        };
+      }
       return {
         range: { from: args["from"], to: args["to"] },
         // Keyed by ASIN and SKU together, because one ASIN is advertised
@@ -617,7 +660,7 @@ export async function callTool(
         query["or"] =
           `(entity_id.eq.${asin},old_value.eq.${asin},new_value.eq.${asin})`;
       }
-      const rows = await select<ChangeRow>(
+      const rows = await selectIfProvisioned<ChangeRow>(
         "ads_change_history",
         {
           ...query,
@@ -627,6 +670,9 @@ export async function callTool(
         },
         limit,
       );
+      if (rows === null) {
+        return { range: { from, to }, changes: [], note: NOT_PROVISIONED };
+      }
       return {
         range: { from, to },
         filters: {
