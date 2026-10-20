@@ -132,10 +132,14 @@ async function dispatch(
         capabilities: { tools: { listChanged: false } },
         serverInfo: SERVER_INFO,
         instructions:
-          "Silverpot Tea's marketplace figures. Sales are live for Amazon and " +
-          "Walmart. Advertising rows may be empty: Amazon Ads is pending API " +
-          "approval and Walmart advertising has no available API route. When a " +
-          "figure is zero, call data_freshness before reporting it as no sales.",
+          "Silverpot Tea's marketplace figures. Sales and Amazon advertising " +
+          "are live; Walmart advertising has no available API route, so those " +
+          "rows stay empty. Advertising comes at three grains - ads_summary " +
+          "for totals, ads_by_campaign and ads_by_asin for the detail - and " +
+          "they are separate tables, so never add two grains together. " +
+          "ad_change_history covers roughly the last ninety days, which is " +
+          "all Amazon keeps. When a figure is zero, call data_freshness " +
+          "before reporting it as no sales.",
       });
     }
 

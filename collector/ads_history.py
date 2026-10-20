@@ -24,8 +24,8 @@ is gone for good, unlike the reporting data, which can be re-read.
 from __future__ import annotations
 
 import argparse
-import json
 import os
+import time
 import sys
 from datetime import date, datetime, timedelta, timezone
 
@@ -41,13 +41,26 @@ HISTORY_RETENTION_DAYS = 90
 # The record types the task names, in Amazon's camelCase house style. Which
 # spelling the API actually wants is exactly what the probe is for - several
 # are tried below rather than one being assumed.
+# Confirmed by the API on 2026-10-20. Sending an unsupported value makes it
+# enumerate the whole set, which is how this list was obtained rather than
+# guessed:
+#
+#   Key in HistoryEventTypes: 0 is not supported. Needs to be one of
+#   CAMPAIGN,AD_GROUP,AD,KEYWORD,PRODUCT_TARGETING,NEGATIVE_KEYWORD,
+#   NEGATIVE_PRODUCT_TARGETING,THEME
+#
+# All eight are requested. The task names six; NEGATIVE_PRODUCT_TARGETING and
+# THEME cost nothing to include and are the same kind of change, and a type
+# left out is a change that silently never arrives.
 RECORD_TYPES = [
     "CAMPAIGN",
     "AD_GROUP",
     "AD",
     "KEYWORD",
-    "NEGATIVE_KEYWORD",
     "PRODUCT_TARGETING",
+    "NEGATIVE_KEYWORD",
+    "NEGATIVE_PRODUCT_TARGETING",
+    "THEME",
 ]
 
 # Candidate request shapes, most-likely first. Each is (label, content_type,
@@ -61,6 +74,66 @@ RECORD_TYPES = [
 
 def _millis(when: datetime) -> int:
     return int(when.timestamp() * 1000)
+
+
+def _request(token: str, start: datetime, end: datetime, sess,
+             page: int = 0, page_size: int = 50):
+    """One history request. Confirmed shape, retried through a 429.
+
+    Rate limiting is real here: round two fired five requests back to back and
+    the third came back 429, which is also why the one candidate that would
+    have worked appeared not to. A probe that cannot tell "wrong request" from
+    "too many requests" teaches the wrong lesson, so this backs off.
+    """
+    body = {
+        "fromDate": _millis(start),
+        "toDate": _millis(end),
+        "eventTypes": RECORD_TYPES,
+        "pageSize": page_size,
+        "pageOffset": page * page_size,
+    }
+    delay = 2.0
+    for attempt in range(5):
+        resp = sess.post(
+            f"{ads.ADS_HOST}{HISTORY_PATH}",
+            headers=_headers(token, "application/json"),
+            json=body,
+            timeout=net.TIMEOUT,
+        )
+        if resp.status_code != 429:
+            return resp, body
+        if attempt < 4:
+            print(f"    429, waiting {delay:.0f}s")
+            time.sleep(delay)
+            delay *= 2
+    return resp, body
+
+
+def _shape(value) -> str:
+    """What a value *is*, never what it says.
+
+    The Actions logs on this repository are public, and change history
+    carries campaign names, keyword text and bid amounts - Silverpot's
+    advertising strategy in full. The same reasoning already applies to
+    orders_report, which prints column names and nothing from any row because
+    the rows carry buyer addresses. So the probe reports each field's type and
+    size and redacts the content.
+    """
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, (int, float)):
+        digits = len(str(abs(int(value))))
+        return f"{type(value).__name__}(~{digits} digits)"
+    if isinstance(value, str):
+        return f"str(len {len(value)})"
+    if isinstance(value, list):
+        inner = _shape(value[0]) if value else "empty"
+        return f"list[{len(value)}] of {inner}"
+    if isinstance(value, dict):
+        return f"object{{{', '.join(sorted(value))}}}"
+    return type(value).__name__
 
 
 def _candidates(start: datetime, end: datetime, max_results: int = 100):
@@ -125,61 +198,65 @@ def _headers(token: str, content_type: str) -> dict:
     return head
 
 
-def probe(days: int = 7, sess=None) -> int:
-    """Send each candidate and print what Amazon says. Writes nothing.
+def probe(days: int = HISTORY_RETENTION_DAYS, sess=None) -> int:
+    """Ask for a real window and report the record shape. Writes nothing.
 
-    Prints bodies because they are Amazon's own words and they are where the
-    answer is. Nothing of ours joins them: no token, no client id, no profile
-    id - this repository's Actions logs are public.
+    Rounds one and two settled the request: POST /history with `eventTypes`,
+    `fromDate` and `toDate` in epoch milliseconds, answering with
+    {"events": [...], "pageSize", "pageOffset", "maxPageNumber",
+    "totalRecords"}. What is left is the shape of an individual event, which
+    needs a window that actually contains changes - hence ninety days rather
+    than seven.
+
+    Field *names* are printed. Field *values* are not: see `_shape`.
     """
     sess = sess or net.session()
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
     token = ads.get_access_token(sess=sess)
     print(f"Probing {ads.ADS_HOST}{HISTORY_PATH} over the last {days} day(s).")
-    print(f"Window {start:%Y-%m-%d %H:%M}Z .. {end:%Y-%m-%d %H:%M}Z\n")
+    print(f"Window {start:%Y-%m-%d}..{end:%Y-%m-%d}")
+    print("Values are redacted: these logs are public and change history "
+          "carries keyword text and bids.\n")
 
-    winners = []
-    for label, content_type, body in _candidates(start, end):
-        try:
-            resp = sess.post(
-                f"{ads.ADS_HOST}{HISTORY_PATH}",
-                headers=_headers(token, content_type),
-                json=body,
-                timeout=net.TIMEOUT,
-            )
-        except Exception as exc:  # noqa: BLE001 - a probe reports, never raises
-            print(f"[{label}] transport error: {net.describe_error(exc)}\n")
+    resp, body = _request(token, start, end, sess)
+    print(f"HTTP {resp.status_code}  (sent keys: {sorted(body)})")
+    if resp.status_code >= 400:
+        print(f"body: {(resp.text or '')[:700]}")
+        return 1
+
+    payload = resp.json()
+    print(f"envelope keys : {sorted(payload)}")
+    for k in ("totalRecords", "pageSize", "pageOffset", "maxPageNumber"):
+        if k in payload:
+            print(f"  {k:<14}= {payload[k]}")
+
+    events = _rows_of(payload)
+    print(f"events on page: {len(events)}")
+    if not events:
+        print("\nAccepted and empty. Either nothing changed in ninety days, "
+              "or the account's history is genuinely bare - both are real "
+              "answers, and neither is a wrong request.")
+        return 0
+
+    keys: dict[str, set] = {}
+    types: dict[str, int] = {}
+    for e in events:
+        if not isinstance(e, dict):
             continue
+        for k, v in e.items():
+            keys.setdefault(k, set()).add(_shape(v))
+        label = str(e.get("eventType") or e.get("type") or "?")
+        types[label] = types.get(label, 0) + 1
 
-        print(f"[{label}] HTTP {resp.status_code}")
-        print(f"    sent: {json.dumps(body)[:200]}")
-        text = (resp.text or "").strip()
-        print(f"    body: {text[:700] or '(empty)'}")
-
-        if 200 <= resp.status_code < 300:
-            winners.append(label)
-            try:
-                payload = resp.json()
-            except ValueError:
-                print("    (200 but not JSON)\n")
-                continue
-            print(f"    top-level keys: {sorted(payload)}")
-            rows = _rows_of(payload)
-            print(f"    rows: {len(rows)}")
-            if rows:
-                print(f"    row keys: {sorted(rows[0])}")
-                print(f"    first row: {json.dumps(rows[0], indent=2)[:1200]}")
-            else:
-                print("    (accepted, and empty - no changes in this window)")
-        print()
-
-    if winners:
-        print(f"Accepted: {', '.join(winners)}")
-        print("Keep the first of these in _candidates and delete the rest.")
-    else:
-        print("Nothing was accepted. The bodies above are the evidence; the "
-              "wording usually names the field it wanted.")
+    print("\nfields seen across every event on this page:")
+    for k in sorted(keys):
+        print(f"  {k:<28} {', '.join(sorted(keys[k]))}")
+    print("\nevent types on this page:")
+    for k in sorted(types):
+        print(f"  {k:<28} {types[k]}")
+    print("\nThose names are what the ingestion maps from. Nothing is written "
+          "until they are in ads_history's own FIELDS list.")
     return 0
 
 
@@ -193,7 +270,11 @@ def _rows_of(payload) -> list:
         return payload
     if not isinstance(payload, dict):
         return []
-    for key in ("changes", "records", "history", "elements", "results", "data"):
+    # `events` first: confirmed live on 2026-10-20, in the envelope
+    # {"events": [...], "pageSize": 50, "pageOffset": 0, "maxPageNumber": 0,
+    #  "totalRecords": 0}. The rest are kept as fallbacks only.
+    for key in ("events", "changes", "records", "history", "elements",
+                "results", "data"):
         value = payload.get(key)
         if isinstance(value, list):
             return value
