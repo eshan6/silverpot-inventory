@@ -26,6 +26,22 @@ tool it exposes. If change history is among them, `tools/list` hands over the
 exact argument names and the enum - the one thing six probe rounds could not
 extract - from Amazon rather than from a guess.
 
+What it found, run 104 on 2026-10-20. Both endpoints answer, with the same
+Ads credentials and no extra setup:
+
+    lite  Amazon Ads MCP Server (Tool Search)    3 tools
+    full  Amazon Ads MCP Server                110 tools
+
+The 110 cover campaign management, reporting, AMC, billing, account and user
+management, Amazon Live and promotions. **None of them is change history.**
+There is no `history`, `change`, `audit` or `revision` tool in the set, so the
+MCP route does not expose it either and `POST /history` remains the only
+surface that does.
+
+The lite endpoint is the interesting half: it is a tool *search* server, and
+`--search` asks Amazon's own index by what a tool does rather than reading
+110 names and judging by eye.
+
 Reads only. There is no ingestion here and will not be until a schema has
 come back.
 
@@ -178,6 +194,65 @@ def _list_tools(sess, label: str, url: str, token: str) -> list:
     return tools
 
 
+# The lite endpoint is a tool-*search* server: three tools
+# (search_tools, describe_tools, invoke_tool) over the same visible set. Its
+# search is Amazon's own index of its own catalogue, so asking it for "change
+# history" is a better answer than reading 110 names and judging by eye.
+SEARCH_ENDPOINT = MCP_ENDPOINTS[0][1]
+SEARCH_TOOL = "amazon_ads_mcp-search_tools"
+
+
+def search(query: str, sess=None) -> int:
+    """Ask Amazon's own tool index for a tool, by what it does.
+
+    This is the only tool *call* in this module, and it is safe for the same
+    reason the rest of the probe is not: its result is a catalogue of tool
+    names and descriptions - Amazon's documentation - and carries none of
+    Silverpot's spend, campaign names or keywords. Do not extend this to any
+    tool that returns account data while these logs are public.
+    """
+    sess = sess or net.session()
+    token = ads.get_access_token(sess=sess)
+    print(f"Searching Amazon's Ads tool index for: {query!r}\n")
+
+    status, headers, parsed, raw = _rpc(sess, SEARCH_ENDPOINT, token,
+                                        "initialize", {
+                                            "protocolVersion": PROTOCOL_VERSION,
+                                            "capabilities": {},
+                                            "clientInfo": {
+                                                "name": "silverpot-inventory",
+                                                "version": "1",
+                                            },
+                                        })
+    print(f"initialize      HTTP {status}")
+    if status >= 400 or parsed is None or "error" in parsed:
+        print(f"    {raw[:400]}")
+        return 1
+    session_id = headers.get("Mcp-Session-Id") or headers.get("mcp-session-id")
+    _rpc(sess, SEARCH_ENDPOINT, token, "notifications/initialized",
+         params={}, session_id=session_id)
+
+    status, _, parsed, raw = _rpc(
+        sess, SEARCH_ENDPOINT, token, "tools/call",
+        params={"name": SEARCH_TOOL, "arguments": {"query": query}},
+        session_id=session_id, rpc_id=2)
+    print(f"tools/call      HTTP {status}")
+    if status >= 400 or parsed is None:
+        print(f"    {raw[:600]}")
+        return 1
+    if "error" in parsed:
+        print(f"    error: {json.dumps(parsed['error'])[:600]}")
+        return 1
+
+    # The result is content blocks, and the useful one is text holding JSON.
+    # Printed as it arrives rather than parsed into an assumed shape: this is
+    # a probe, and the whole point is to see what Amazon actually returns.
+    for block in (parsed.get("result") or {}).get("content") or []:
+        if isinstance(block, dict) and block.get("type") == "text":
+            print(str(block.get("text") or "")[:6000])
+    return 0
+
+
 def probe(sess=None) -> int:
     sess = sess or net.session()
     token = ads.get_access_token(sess=sess)
@@ -214,6 +289,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe", action="store_true",
                     help="list the MCP server's tools and print nothing else")
+    ap.add_argument("--search", metavar="QUERY",
+                    help="ask Amazon's own tool index which tool does QUERY")
     args = ap.parse_args()
 
     if not ads.configured():
@@ -224,11 +301,14 @@ def main() -> int:
     if net.apply_ipv4_preference():
         print("Network: forcing IPv4")
 
+    if args.search:
+        return search(args.search)
+
     if args.probe:
         return probe()
 
-    print("Nothing to do but --probe: this module reads a schema and has no "
-          "ingestion. See the module docstring.", file=sys.stderr)
+    print("Nothing to do but --probe or --search: this module reads a schema "
+          "and has no ingestion. See the module docstring.", file=sys.stderr)
     return 1
 
 

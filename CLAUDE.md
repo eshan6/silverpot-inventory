@@ -385,16 +385,35 @@ Two sources that look like they should settle it and do not:
   Account link invites and Review Requests. Change History is **not** a beta,
   so there is no opt-in to find and no entitlement to request.
 
-What is left untried, and what `collector/ads_mcp.py --probe` does: Amazon
-runs an MCP server over the same Ads credentials
-(`advertising-ai.amazon.com/mcp` and `/mcp/lite`, scope
-`advertising::campaign_management`, which this app already holds), and an MCP
-server publishes a JSON schema for every tool it exposes. If change history
-is among them, `tools/list` hands over the argument names and the enum from
-Amazon rather than from a guess. It lists tools and calls none, so no
-advertising figure reaches the public log. Run it from the `ads` workflow with
-`mcp_probe`. If that comes back without a history tool, the remaining route is
-an Amazon support case quoting the refusal verbatim, not more probing.
+The third source, asked and answered. Amazon runs an MCP server over these
+same Ads credentials, and an MCP server publishes a JSON schema per tool, so
+`collector/ads_mcp.py --probe` asked it for the enum instead of guessing a
+seventh encoding. Both endpoints answer with no extra setup (run 104,
+2026-10-20):
+
+```
+lite  advertising-ai.amazon.com/mcp/lite   Amazon Ads MCP Server (Tool Search)    3 tools
+full  advertising-ai.amazon.com/mcp        Amazon Ads MCP Server                110 tools
+```
+
+The 110 cover campaign management, reporting, AMC, billing, account and user
+management, Amazon Live and promotions. **None of them is change history** -
+no `history`, `change`, `audit` or `revision` tool in the set. So the MCP
+route does not expose it and `POST /history` stays the only surface that
+does. The probe lists tools and calls none, so no advertising figure reaches
+the public log.
+
+The lite endpoint turned out to be a tool-*search* server
+(`search_tools`, `describe_tools`, `invoke_tool`), which is Amazon's own index
+of its own catalogue. `ads_mcp --search "change history"` asks it by what a
+tool does rather than reading 110 names and judging by eye; the `ads`
+workflow takes the query as `mcp_search`. That search is the only tool this
+module *calls*, and it is safe only because its result is a catalogue of
+names and descriptions. **Do not extend it to a tool that returns account
+data while these logs are public.**
+
+With all three sources exhausted, the remaining route is an Amazon support
+case quoting the refusal verbatim - not a twelfth request variant.
 
 **The probe redacts values, not just secrets.** It prints field names, types
 and sizes and withholds the content, because change history carries campaign
