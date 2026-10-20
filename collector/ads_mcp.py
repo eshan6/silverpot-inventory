@@ -245,11 +245,33 @@ def search(query: str, sess=None) -> int:
         return 1
 
     # The result is content blocks, and the useful one is text holding JSON.
-    # Printed as it arrives rather than parsed into an assumed shape: this is
-    # a probe, and the whole point is to see what Amazon actually returns.
+    # The first run of this printed the raw text and a 6000-character cap cut
+    # it off inside the first of three matched domains, which is how a
+    # partial answer could have been read as a whole one. So the names are
+    # pulled out and the descriptions dropped: every tool Amazon matched is
+    # printed, and the raw text only when the shape is not what we expect.
     for block in (parsed.get("result") or {}).get("content") or []:
-        if isinstance(block, dict) and block.get("type") == "text":
-            print(str(block.get("text") or "")[:6000])
+        if not isinstance(block, dict) or block.get("type") != "text":
+            continue
+        text = str(block.get("text") or "")
+        try:
+            result = json.loads(text)
+        except ValueError:
+            print(text[:6000])
+            continue
+        print(f"domains matched {result.get('totalDomainsMatched')}, "
+              f"returned {result.get('returnedDomains')}, "
+              f"tools {result.get('returnedTools')}\n")
+        for domain in result.get("domains") or []:
+            print(f"  {domain.get('domain')} "
+                  f"(confidence {domain.get('confidence')}, "
+                  f"{domain.get('toolCount')} tools)")
+            for group in ("matchedTools", "otherToolsInDomain"):
+                names = [t.get("name") for t in (domain.get(group) or [])
+                         if isinstance(t, dict)]
+                if names:
+                    print(f"    {group}: {', '.join(str(n) for n in names)}")
+            print()
     return 0
 
 
