@@ -405,15 +405,26 @@ the public log.
 
 The lite endpoint turned out to be a tool-*search* server
 (`search_tools`, `describe_tools`, `invoke_tool`), which is Amazon's own index
-of its own catalogue. `ads_mcp --search "change history"` asks it by what a
-tool does rather than reading 110 names and judging by eye; the `ads`
-workflow takes the query as `mcp_search`. That search is the only tool this
-module *calls*, and it is safe only because its result is a catalogue of
-names and descriptions. **Do not extend it to a tool that returns account
-data while these logs are public.**
+of its own catalogue. `ads_mcp --search` asks it by what a tool does rather
+than reading 110 names and judging by eye; the `ads` workflow takes the query
+as `mcp_search`. That search is the only tool this module *calls*, and it is
+safe only because its result is a catalogue of names and descriptions. **Do
+not extend it to a tool that returns account data while these logs are
+public.**
 
-With all three sources exhausted, the remaining route is an Amazon support
-case quoting the refusal verbatim - not a twelfth request variant.
+Asked point-blank for `change history audit log of past edits: who changed a
+campaign, ad group, keyword or bid, and when`, the index returned
+`campaign_management` at confidence 1.0 and offered the tools that *make*
+changes - update, create, delete, query - plus `ads_accounts` and
+`user_invitation`. Nothing that reads past changes, which is the same answer
+`tools/list` gave, now from Amazon's own matcher rather than from reading 110
+names.
+
+With all four sources exhausted - the endpoint itself, the OpenAPI
+specification, the betas list and the MCP catalogue - the remaining route is
+an Amazon support case quoting the refusal verbatim, not a twelfth request
+variant. `ADS_HISTORY_SUPPORT_CASE.md` is that case, written out and ready to
+paste.
 
 **The probe redacts values, not just secrets.** It prints field names, types
 and sizes and withholds the content, because change history carries campaign
