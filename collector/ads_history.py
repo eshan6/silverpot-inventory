@@ -99,19 +99,49 @@ def _millis(when: datetime) -> int:
 # when it wanted a map and got a list: an empty list and an empty map look
 # alike, a populated one does not. So the encoding is the open question, not
 # the vocabulary.
-def _event_type_encodings() -> list[tuple[str, object]]:
+def _event_type_encodings() -> list[tuple[str, object, str]]:
+    """(label, eventTypes value, Content-Type).
+
+    Round five sent six encodings of `eventTypes` - array of strings, map of
+    name to true, comma-separated, array of objects, map of index to name,
+    bare string - inside an 88-day window that Amazon accepted. All six came
+    back with the identical refusal:
+
+        Key in HistoryEventTypes: 0 is not supported. Needs to be one of
+        CAMPAIGN,AD_GROUP,...
+
+    Identical including for the map, which kills the reading round four was
+    built on: if the server were parsing a map it would name the offending
+    key as CAMPAIGN, not 0. The `0` does not reflect the input at all, so it
+    is a constant in the message template and says nothing about the shape.
+
+    What has never been tried is the correct body with the *vendor* media
+    type. Round one paired `application/vnd.history.v1+json` only with the
+    wrong field names, and everything since has used `application/json`. The
+    reporting API takes a versioned media type
+    (application/vnd.createasyncreportrequest.v3+json), so a versioned
+    deserialiser that silently refuses to resolve the enum under a generic
+    content type is a live possibility and a cheap one to test.
+    """
+    types = list(RECORD_TYPES)
+    one = [RECORD_TYPES[0]]
     return [
-        ("array of strings (the round-three control)", list(RECORD_TYPES)),
-        ("map of name to true", {t: True for t in RECORD_TYPES}),
-        ("comma-separated string", ",".join(RECORD_TYPES)),
-        ("array of objects", [{"eventType": t} for t in RECORD_TYPES]),
-        ("map of index to name", {str(i): t for i, t in enumerate(RECORD_TYPES)}),
-        ("single string", RECORD_TYPES[0]),
+        ("vnd.history.v1+json, full list", types,
+         "application/vnd.history.v1+json"),
+        ("vnd.history.v1+json, one type", one,
+         "application/vnd.history.v1+json"),
+        ("vnd.historyevents.v1+json, full list", types,
+         "application/vnd.historyevents.v1+json"),
+        ("application/json, one type (round-five control)", one,
+         "application/json"),
+        ("application/json, lowercase values", [t.lower() for t in RECORD_TYPES],
+         "application/json"),
     ]
 
 
 def _request(token: str, start: datetime, end: datetime, sess,
-             page: int = 0, page_size: int = 50, event_types=None):
+             page: int = 0, page_size: int = 50, event_types=None,
+             content_type: str = "application/json"):
     """One history request. Confirmed shape, retried through a 429.
 
     Rate limiting is real here: round two fired five requests back to back and
@@ -130,7 +160,7 @@ def _request(token: str, start: datetime, end: datetime, sess,
     for attempt in range(5):
         resp = sess.post(
             f"{ads.ADS_HOST}{HISTORY_PATH}",
-            headers=_headers(token, "application/json"),
+            headers=_headers(token, content_type),
             json=body,
             timeout=net.TIMEOUT,
         )
@@ -257,8 +287,9 @@ def probe(days: int = HISTORY_BACKFILL_DAYS, sess=None) -> int:
     # time with a pause between, because the limiter here is tight enough
     # that back-to-back probes answer 429 and look like refusals.
     payload = None
-    for label, encoding in _event_type_encodings():
-        resp, body = _request(token, start, end, sess, event_types=encoding)
+    for label, encoding, content_type in _event_type_encodings():
+        resp, body = _request(token, start, end, sess, event_types=encoding,
+                              content_type=content_type)
         sent = body["eventTypes"]
         print(f"[{label}] HTTP {resp.status_code}  eventTypes={_shape(sent)}")
         if resp.status_code >= 400:
