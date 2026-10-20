@@ -15,7 +15,7 @@
 // means "no sales" or "the pipeline did not run", and this project has
 // already published stale numbers once without saying so.
 
-import { select } from "./db.js";
+import { DbError, select } from "./db.js";
 
 const ROW_CAP = 20000;
 const MARKETPLACES = ["amazon", "walmart"] as const;
@@ -97,6 +97,69 @@ export const TOOLS: ToolDef[] = [
     inputSchema: {
       type: "object",
       properties: dateRange,
+      required: ["from", "to"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "ads_by_campaign",
+    description:
+      "Sponsored Products metrics per campaign per day, summed over a date " +
+      "range, biggest spender first. Totals here match ads_summary for the " +
+      "same range. Do not add this to ads_by_asin: they are the same spend " +
+      "cut two ways, not two different spends.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...dateRange,
+        limit: { type: "integer", description: "How many campaigns (default 50)." },
+      },
+      required: ["from", "to"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "ads_by_asin",
+    description:
+      "Sponsored Products metrics per advertised ASIN per day, summed over a " +
+      "date range, biggest spender first. The same spend as ads_by_campaign, " +
+      "cut by product instead; never sum the two together. Campaign-level " +
+      "spend that is not attributable to one advertised product does not " +
+      "appear here, so this can total slightly less than ads_summary.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...dateRange,
+        limit: { type: "integer", description: "How many ASINs (default 50)." },
+      },
+      required: ["from", "to"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "ad_change_history",
+    description:
+      "Who changed what in the Amazon Ads account, and when: campaigns, ad " +
+      "groups, ads, keywords, negative keywords and product targets, with " +
+      "the old and new value of each change. Use it to explain a step change " +
+      "in spend or sales. Amazon keeps about ninety days and deletes the " +
+      "rest, so an empty answer for an older range means the window closed, " +
+      "not that nothing changed.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        from: { type: "string", description: "First day, YYYY-MM-DD (inclusive)." },
+        to: { type: "string", description: "Last day, YYYY-MM-DD (inclusive)." },
+        campaign_id: {
+          type: "string",
+          description: "Only changes to this campaign, and to things inside it.",
+        },
+        asin: {
+          type: "string",
+          description: "Only changes naming this ASIN, such as a product target.",
+        },
+        limit: { type: "integer", description: "How many changes (default 200)." },
+      },
       required: ["from", "to"],
       additionalProperties: false,
     },
@@ -206,6 +269,148 @@ interface FreshnessRow {
   rows_written: number;
   started_at: string;
   finished_at: string | null;
+}
+
+/**
+ * A select that tolerates the table not existing yet.
+ *
+ * `ads_advertised_product` and `ads_change_history` arrive in migration
+ * 0005, which has to be applied to the Supabase project by hand - PostgREST
+ * carries no DDL. Until someone runs it, PostgREST answers "could not find
+ * the table in the schema cache", and letting that reach an MCP client as a
+ * raw Postgres string is both confusing and a small leak of schema detail.
+ * A reader is better served by being told the pipeline has not been
+ * provisioned than by a stack trace.
+ *
+ * Only a missing table is softened. Every other database error still throws:
+ * a permissions failure or a timeout returning "no rows" would be a wrong
+ * answer dressed as an empty one, which is the thing this project refuses to
+ * do.
+ */
+async function selectIfProvisioned<T>(
+  table: string,
+  query: Record<string, string>,
+  limit: number,
+): Promise<T[] | null> {
+  try {
+    return await select<T>(table, query, limit);
+  } catch (err) {
+    if (err instanceof DbError && (err.status === 404 || err.status === 400)) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+const NOT_PROVISIONED =
+  "This table does not exist yet. Migration 0005_ads_history.sql has not " +
+  "been applied to the dashboard's Supabase project, so nothing has been " +
+  "ingested into it. This is a setup step, not an empty result.";
+
+interface AdGrainRow {
+  marketplace: string;
+  ad_program: string;
+  campaign_id?: string;
+  campaign_name?: string | null;
+  asin?: string;
+  sku?: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  attributed_sales: number;
+  attributed_units: number;
+}
+
+interface ChangeRow {
+  changed_at: string;
+  entity_type: string;
+  entity_id: string;
+  entity_name: string | null;
+  campaign_id: string;
+  campaign_name: string | null;
+  change_type: string;
+  field_name: string;
+  old_value: string | null;
+  new_value: string | null;
+  changed_by: string | null;
+}
+
+/** An optional free-text filter, validated so it cannot inject a filter. */
+function text(value: unknown, field: string): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string") throw new ToolError(`${field} must be a string`);
+  // Same reasoning as `day`: these are concatenated into PostgREST filters,
+  // where a comma, parenthesis or dot is syntax. Ids and ASINs need none of
+  // those characters, so the safe set is small and the check is a whitelist
+  // rather than an attempt to escape.
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(value)) {
+    throw new ToolError(`${field} must be letters, digits, dash or underscore`);
+  }
+  return value;
+}
+
+function cap(args: Record<string, unknown>, fallback: number): number {
+  const raw = args["limit"];
+  if (raw === undefined || raw === null || raw === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new ToolError("limit must be a positive whole number");
+  }
+  return Math.min(n, ROW_CAP);
+}
+
+/** The day after `iso`, so a date range can be closed with a `lt` on an instant. */
+function nextDay(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Sum metric rows into one row per key, biggest spender first.
+ *
+ * Shared by the two grain tools so that "spend" means the same arithmetic in
+ * both. They read different tables on purpose - see 0005_ads_history.sql -
+ * and the one thing that must not differ is how the numbers are added up.
+ */
+function rollUp(
+  rows: AdGrainRow[],
+  key: (r: AdGrainRow) => string,
+  label: (r: AdGrainRow) => Record<string, string | null>,
+  limit: number,
+) {
+  const by = new Map<string, Record<string, unknown>>();
+  for (const r of rows) {
+    const k = `${r.marketplace}\u0000${r.ad_program}\u0000${key(r)}`;
+    let cur = by.get(k);
+    if (!cur) {
+      cur = {
+        marketplace: r.marketplace,
+        ad_program: r.ad_program,
+        ...label(r),
+        impressions: 0, clicks: 0, spend: 0,
+        attributed_sales: 0, attributed_units: 0,
+      };
+      by.set(k, cur);
+    }
+    cur["impressions"] = (cur["impressions"] as number) + (Number(r.impressions) || 0);
+    cur["clicks"] = (cur["clicks"] as number) + (Number(r.clicks) || 0);
+    cur["spend"] = (cur["spend"] as number) + (Number(r.spend) || 0);
+    cur["attributed_sales"] =
+      (cur["attributed_sales"] as number) + (Number(r.attributed_sales) || 0);
+    cur["attributed_units"] =
+      (cur["attributed_units"] as number) + (Number(r.attributed_units) || 0);
+  }
+  return [...by.values()]
+    .map((r) => ({
+      ...r,
+      // Rounded once, at the end. Rounding each row first and then adding
+      // would drift away from ads_summary, which rounds the same way.
+      spend: round(r["spend"] as number),
+      attributed_sales: round(r["attributed_sales"] as number),
+    }))
+    .sort((a, b) => (b["spend"] as number) - (a["spend"] as number))
+    .slice(0, limit);
 }
 
 async function freshness() {
@@ -346,7 +551,7 @@ export async function callTool(
         programs,
         note:
           rows.length === 0
-            ? "No advertising rows. Amazon Ads is pending API approval and Walmart advertising has no available API route."
+            ? "No advertising rows in this range. Amazon Ads is live, so check data_freshness before reading this as no spend; Walmart advertising has no available API route."
             : undefined,
       };
     }
@@ -368,6 +573,118 @@ export async function callTool(
         ROW_CAP,
       );
       return { range: { from: args["from"], to: args["to"] }, days: rows };
+    }
+
+    case "ads_by_campaign": {
+      // Arguments are validated before anything is fetched: a bad limit
+      // should be a refusal, not a refusal after a database round trip.
+      const limit = cap(args, 50);
+      const { query } = range(args, "ad_date");
+      const rows = await select<AdGrainRow>(
+        "ads_daily",
+        {
+          ...query,
+          select:
+            "marketplace,ad_program,campaign_id,campaign_name," +
+            "impressions,clicks,spend,attributed_sales,attributed_units",
+        },
+        ROW_CAP,
+      );
+      return {
+        range: { from: args["from"], to: args["to"] },
+        campaigns: rollUp(
+          rows,
+          (r) => r.campaign_id ?? "",
+          (r) => ({
+            campaign_id: r.campaign_id ?? "",
+            campaign_name: r.campaign_name ?? null,
+          }),
+          limit,
+        ),
+      };
+    }
+
+    case "ads_by_asin": {
+      const limit = cap(args, 50);
+      const { query } = range(args, "ad_date");
+      const rows = await selectIfProvisioned<AdGrainRow>(
+        "ads_advertised_product",
+        {
+          ...query,
+          select:
+            "marketplace,ad_program,asin,sku,campaign_id,campaign_name," +
+            "impressions,clicks,spend,attributed_sales,attributed_units",
+        },
+        ROW_CAP,
+      );
+      if (rows === null) {
+        return {
+          range: { from: args["from"], to: args["to"] },
+          asins: [],
+          note: NOT_PROVISIONED,
+        };
+      }
+      return {
+        range: { from: args["from"], to: args["to"] },
+        // Keyed by ASIN and SKU together, because one ASIN is advertised
+        // under more than one seller SKU here - the stickerless conversion
+        // issued a second one - and collapsing them would hide that split.
+        asins: rollUp(
+          rows,
+          (r) => `${r.asin ?? ""}\u0000${r.sku ?? ""}`,
+          (r) => ({ asin: r.asin ?? "", sku: r.sku ?? "" }),
+          limit,
+        ),
+      };
+    }
+
+    case "ad_change_history": {
+      const limit = Math.min(cap(args, 200), ROW_CAP);
+      const from = day(args["from"], "from");
+      const to = day(args["to"], "to");
+      if (from > to) throw new ToolError("`from` is after `to`");
+      // changed_at is an instant, not a day, so the upper bound has to reach
+      // the end of `to`. A lte on the bare date would silently drop every
+      // change made after midnight on the last day of the range.
+      const query: Record<string, string> = {
+        and: `(changed_at.gte.${from}T00:00:00Z,changed_at.lt.${nextDay(to)}T00:00:00Z)`,
+        order: "changed_at.desc",
+      };
+      const campaign = text(args["campaign_id"], "campaign_id");
+      if (campaign) query["campaign_id"] = `eq.${campaign}`;
+      const asin = text(args["asin"], "asin");
+      if (asin) {
+        // An ASIN is not a column: it turns up as the target of a product
+        // target or the subject of an ad, so it is matched against the
+        // entity id and the values on either side of the change.
+        query["or"] =
+          `(entity_id.eq.${asin},old_value.eq.${asin},new_value.eq.${asin})`;
+      }
+      const rows = await selectIfProvisioned<ChangeRow>(
+        "ads_change_history",
+        {
+          ...query,
+          select:
+            "changed_at,entity_type,entity_id,entity_name,campaign_id," +
+            "campaign_name,change_type,field_name,old_value,new_value,changed_by",
+        },
+        limit,
+      );
+      if (rows === null) {
+        return { range: { from, to }, changes: [], note: NOT_PROVISIONED };
+      }
+      return {
+        range: { from, to },
+        filters: {
+          campaign_id: campaign ?? undefined,
+          asin: asin ?? undefined,
+        },
+        changes: rows,
+        note:
+          rows.length === 0
+            ? "No changes recorded in this range. Amazon keeps roughly ninety days of change history and deletes the rest, so an older range being empty means the window closed. Call data_freshness to see how far back this table actually reaches."
+            : undefined,
+      };
     }
 
     case "data_freshness":

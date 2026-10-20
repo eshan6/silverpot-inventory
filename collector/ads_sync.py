@@ -24,8 +24,12 @@ from . import ads, backfill, dashboard_db, net, orders
 # re-read each run is wider than the sales one, and rows are upserted.
 TRAILING_DAYS = 15
 
+# One table per grain, and never two grains in one table: ads_summary sums
+# ads_daily grouped only by (marketplace, ad_program), so a second grain
+# living there would double every spend figure the dashboard has ever shown.
 TABLE_FOR_GRAIN = {
     "campaign": "ads_daily",
+    "advertised_product": "ads_advertised_product",
     "search_term": "ads_search_terms",
 }
 

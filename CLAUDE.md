@@ -322,6 +322,50 @@ run. Two things that look like details and are not:
   the first run would show the second run zero and count a busy month as
   empty. Hence `found` in the pending record.
 
+**Advertising comes at three grains, in three tables, and they must never be
+summed together.** `ads_summary` reads `ads_daily` and groups only by
+`(marketplace, ad_program)` - it does not filter by grain, because until
+2026-10-20 there was only one. So the advertised-product report goes to
+`ads_advertised_product` and search terms to `ads_search_terms`, never into
+`ads_daily`. Putting a second grain there would count the same spend twice,
+once under the campaign and once under the ASIN, and **nothing would error**:
+`ads_daily`'s primary key carries `sku`, so the product rows insert cleanly
+beside the campaign rows and every figure the dashboard has ever shown
+quietly doubles. `tests/test_ads_schema.py` pins one grain per table, and
+pointing the new grain at `ads_daily` fails it.
+
+**The change history API, as the probe found it.** Neither Amazon's docs nor
+the API host are reachable from a Claude Code container, so all of this came
+out of `collector/ads_history.py --probe` against the live account on
+2026-10-20, one CI round trip at a time:
+
+- `POST https://advertising-api.amazon.com/history`, `Content-Type:
+  application/json`, the same three auth headers as the reporting API.
+- The body is `eventTypes`, `fromDate` and `toDate`. **Not**
+  `startDateTime`, `endDateTime` or `recordTypeFilter` - those were the first
+  five guesses and all five were refused in one go, which is what the probe
+  is for. The dates are epoch milliseconds.
+- The answer is `{"events": [...], "pageSize", "pageOffset",
+  "maxPageNumber", "totalRecords"}`. Paging is offset-and-size, not a token.
+- The `eventTypes` vocabulary is `CAMPAIGN, AD_GROUP, AD, KEYWORD,
+  PRODUCT_TARGETING, NEGATIVE_KEYWORD, NEGATIVE_PRODUCT_TARGETING, THEME`.
+  Amazon enumerated it itself when sent one deliberately invalid value, which
+  beats guessing eight names one run at a time.
+- **`fromDate` must be *inside* ninety days, not exactly ninety.** `Invalid
+  request: Error: fromDate is more than 90 days ago, it should be greater
+  than 1784713305808`. Amazon measures the window when the request lands, so
+  exactly ninety is decided by the milliseconds in flight and loses. The
+  backfill asks for 88.
+- The limiter is tight. Five requests back to back drew a 429, which made the
+  one correct candidate look like a refusal. The probe backs off, and so must
+  anything that pages.
+
+**The probe redacts values, not just secrets.** It prints field names, types
+and sizes and withholds the content, because change history carries campaign
+names, keyword text and bids - the whole advertising strategy - and this
+repository's Actions logs are public. Same reasoning as `orders_report`,
+which withholds row content because the rows carry buyer addresses.
+
 **Amazon keeps sixty days of advertising reports, and says so itself.** Run 54
 asked for 2026-07-16 and was refused with `startDate (2026-07-16) must be
 equal to or after report type data retention start date (2026-07-31)` - sixty

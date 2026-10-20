@@ -39,6 +39,10 @@ on:
         description: "Ask Walmart Connect whether our Marketplace credentials reach it. Reads only."
         type: boolean
         default: false
+      history_probe:
+        description: "Ask the Ads change history endpoint which request shape it accepts. Reads only, writes nothing."
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -80,8 +84,23 @@ jobs:
           FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
         run: python -m collector.walmart_ads --explore
 
+      # Change history is a different endpoint with a request shape this
+      # repository has not yet seen answered. Like the Walmart sweep above
+      # this is a diagnostic: it reads, prints what Amazon says, and writes
+      # nothing anywhere. It runs instead of the pull so that a failed
+      # question never looks like a failed morning.
+      - name: Ask the Ads change history endpoint what it accepts
+        if: ${{ inputs.history_probe == true }}
+        env:
+          ADS_CLIENT_ID: ${{ secrets.ADS_CLIENT_ID }}
+          ADS_CLIENT_SECRET: ${{ secrets.ADS_CLIENT_SECRET }}
+          ADS_REFRESH_TOKEN: ${{ secrets.ADS_REFRESH_TOKEN }}
+          ADS_PROFILE_ID: ${{ secrets.ADS_PROFILE_ID }}
+          FORCE_IPV4: ${{ vars.FORCE_IPV4 || 'true' }}
+        run: python -m collector.ads_history --probe
+
       - name: Pull advertising into the dashboard
-        if: ${{ inputs.walmart_diagnose != true }}
+        if: ${{ inputs.walmart_diagnose != true && inputs.history_probe != true }}
         env:
           # Advertising credentials are their own set. They are not the SP-API
           # ones under a different name: different registration, different

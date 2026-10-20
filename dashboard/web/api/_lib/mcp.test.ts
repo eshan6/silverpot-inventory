@@ -175,3 +175,94 @@ test("every file Vercel will treat as a function is actually one", async () => {
     );
   }
 });
+
+// ---------------------------------------------------------- advertising grains
+//
+// The three advertising tools read two tables on purpose. `ads_summary` and
+// `ads_by_campaign` both sum `ads_daily`; `ads_by_asin` sums
+// `ads_advertised_product`. They are the same spend cut two ways, and the
+// reason they are not one table is that `ads_summary` groups only by
+// (marketplace, ad_program) and does not filter by grain - a second grain in
+// `ads_daily` would double every figure without erroring.
+
+test("the new advertising tools are offered and take closed schemas", () => {
+  for (const name of ["ads_by_campaign", "ads_by_asin", "ad_change_history"]) {
+    const tool = TOOLS.find((t) => t.name === name);
+    assert.ok(tool, `${name} is not offered`);
+    assert.equal((tool.inputSchema as Record<string, unknown>)["additionalProperties"], false);
+    assert.ok(tool.description.length > 40, `${name} needs a real description`);
+  }
+});
+
+test("the two grain tools warn against being added together", () => {
+  // The one mistake a reader of these tools can make that produces a
+  // plausible wrong number rather than an error.
+  for (const name of ["ads_by_campaign", "ads_by_asin"]) {
+    const tool = TOOLS.find((t) => t.name === name);
+    assert.match(String(tool?.description), /never (sum|add)|do not add/i);
+  }
+});
+
+test("no tool description still claims Amazon Ads is awaiting approval", () => {
+  for (const tool of TOOLS) {
+    assert.doesNotMatch(tool.description, /pending API approval/i);
+  }
+});
+
+test("ad_change_history refuses a campaign id that could inject a filter", async () => {
+  const { callTool } = await import("./tools.js");
+  for (const bad of [
+    "123,entity_id.eq.x",
+    "123)",
+    "a.b",
+    "' or 1=1",
+    "x".repeat(65),
+  ]) {
+    await assert.rejects(
+      () => callTool("ad_change_history", {
+        from: "2026-09-01", to: "2026-10-20", campaign_id: bad,
+      }),
+      (err: unknown) => err instanceof ToolError,
+      `campaign_id ${JSON.stringify(bad)} should be refused`,
+    );
+  }
+});
+
+test("ad_change_history refuses an asin that could inject a filter", async () => {
+  const { callTool } = await import("./tools.js");
+  await assert.rejects(
+    () => callTool("ad_change_history", {
+      from: "2026-09-01", to: "2026-10-20", asin: "B0TEST,old_value.eq.x",
+    }),
+    (err: unknown) => err instanceof ToolError,
+  );
+});
+
+test("the grain tools refuse a bad date and a backwards range", async () => {
+  const { callTool } = await import("./tools.js");
+  for (const name of ["ads_by_campaign", "ads_by_asin", "ad_change_history"]) {
+    await assert.rejects(
+      () => callTool(name, { from: "yesterday", to: "2026-10-20" }),
+      (err: unknown) => err instanceof ToolError,
+      `${name} accepted a non-date`,
+    );
+    await assert.rejects(
+      () => callTool(name, { from: "2026-10-20", to: "2026-09-01" }),
+      (err: unknown) => err instanceof ToolError,
+      `${name} accepted a backwards range`,
+    );
+  }
+});
+
+test("a limit must be a positive whole number", async () => {
+  const { callTool } = await import("./tools.js");
+  for (const bad of [0, -5, 2.5, "lots"]) {
+    await assert.rejects(
+      () => callTool("ads_by_campaign", {
+        from: "2026-09-01", to: "2026-10-20", limit: bad,
+      }),
+      (err: unknown) => err instanceof ToolError,
+      `limit ${JSON.stringify(bad)} should be refused`,
+    );
+  }
+});
