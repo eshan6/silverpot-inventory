@@ -64,57 +64,56 @@ def _millis(when: datetime) -> int:
 
 
 def _candidates(start: datetime, end: datetime, max_results: int = 100):
-    iso_start = start.strftime("%Y-%m-%dT%H:%M:%SZ")
-    iso_end = end.strftime("%Y-%m-%dT%H:%M:%SZ")
+    """Round two: the envelope is settled, the vocabulary is not.
+
+    Round one sent five shapes and all five came back with the same 400:
+
+        Invalid request: Error: eventTypes, fromDate(milliseconds) and
+        toDate(milliseconds) are required fields in the request body
+
+    So the body is `eventTypes`, `fromDate` and `toDate`, the dates are epoch
+    milliseconds, and none of `startDateTime`, `endDateTime` or
+    `recordTypeFilter` - the names this module guessed first - exist. A 400
+    about body fields also means the endpoint is live and the token reaches
+    it, which is worth more than the guesses were.
+
+    What is still unknown is the `eventTypes` vocabulary. The first candidate
+    below is deliberately invalid: an enum rejection usually enumerates the
+    values it would have accepted, which is cheaper than guessing six names
+    one run at a time.
+    """
+    window = {"fromDate": _millis(start), "toDate": _millis(end)}
     return [
         (
-            "vnd.history.v1 + epoch millis",
-            "application/vnd.history.v1+json",
-            {
-                "startDateTime": _millis(start),
-                "endDateTime": _millis(end),
-                "recordTypeFilter": RECORD_TYPES,
-                "maxResults": max_results,
-            },
-        ),
-        (
-            "vnd.history.v1 + ISO instants",
-            "application/vnd.history.v1+json",
-            {
-                "startDateTime": iso_start,
-                "endDateTime": iso_end,
-                "recordTypeFilter": RECORD_TYPES,
-                "maxResults": max_results,
-            },
-        ),
-        (
-            "plain json + epoch millis",
+            "deliberately invalid eventType, to make Amazon list the real ones",
             "application/json",
-            {
-                "startDateTime": _millis(start),
-                "endDateTime": _millis(end),
-                "recordTypeFilter": RECORD_TYPES,
-                "maxResults": max_results,
-            },
+            {**window, "eventTypes": ["SILVERPOT_NOT_A_REAL_EVENT_TYPE"]},
         ),
         (
-            "plain json + startDate/endDate days",
+            "entity names, SCREAMING_SNAKE",
             "application/json",
-            {
-                "startDate": start.date().isoformat(),
-                "endDate": end.date().isoformat(),
-                "recordTypeFilter": RECORD_TYPES,
-                "maxResults": max_results,
-            },
+            {**window, "eventTypes": RECORD_TYPES},
         ),
         (
-            "plain json, no record filter",
+            "entity names, camelCase",
             "application/json",
-            {
-                "startDateTime": _millis(start),
-                "endDateTime": _millis(end),
-                "maxResults": max_results,
-            },
+            {**window, "eventTypes": ["campaign", "adGroup", "ad", "keyword",
+                                      "negativeKeyword", "productTargeting"]},
+        ),
+        (
+            "lifecycle names rather than entity names",
+            "application/json",
+            {**window, "eventTypes": ["CREATED", "UPDATED", "DELETED"]},
+        ),
+        (
+            "empty list, to see whether the filter may be omitted in effect",
+            "application/json",
+            {**window, "eventTypes": []},
+        ),
+        (
+            "entity names plus paging, once a vocabulary is accepted",
+            "application/json",
+            {**window, "eventTypes": RECORD_TYPES, "maxResults": max_results},
         ),
     ]
 
