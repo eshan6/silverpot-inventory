@@ -38,6 +38,17 @@ HISTORY_PATH = "/history"
 # the probe is what will show us the wording of that refusal.
 HISTORY_RETENTION_DAYS = 90
 
+# What to actually ask for. Amazon measures its own ninety days at the instant
+# the request lands and rejects a fromDate on the far side of it:
+#
+#   Invalid request: Error: fromDate is more than 90 days ago, it should be
+#   greater than 1784713305808
+#
+# A request for exactly ninety days is therefore a coin toss decided by the
+# milliseconds in flight, and it loses. Two days of margin costs two days of
+# the oldest history and makes the backfill deterministic.
+HISTORY_BACKFILL_DAYS = 88
+
 # The record types the task names, in Amazon's camelCase house style. Which
 # spelling the API actually wants is exactly what the probe is for - several
 # are tried below rather than one being assumed.
@@ -221,7 +232,7 @@ def _headers(token: str, content_type: str) -> dict:
     return head
 
 
-def probe(days: int = HISTORY_RETENTION_DAYS, sess=None) -> int:
+def probe(days: int = HISTORY_BACKFILL_DAYS, sess=None) -> int:
     """Ask for a real window and report the record shape. Writes nothing.
 
     Rounds one and two settled the request: POST /history with `eventTypes`,
@@ -335,8 +346,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe", action="store_true",
                     help="send the candidate requests and print what returns")
-    ap.add_argument("--days", type=int, default=HISTORY_RETENTION_DAYS,
-                    help="how far back the probe window reaches (default 90, Amazon.s retention window)")
+    ap.add_argument("--days", type=int, default=HISTORY_BACKFILL_DAYS,
+                    help="how far back the probe window reaches (default 88)")
     args = ap.parse_args()
 
     if not ads.configured():

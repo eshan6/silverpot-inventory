@@ -540,6 +540,9 @@ export async function callTool(
     }
 
     case "ads_by_campaign": {
+      // Arguments are validated before anything is fetched: a bad limit
+      // should be a refusal, not a refusal after a database round trip.
+      const limit = cap(args, 50);
       const { query } = range(args, "ad_date");
       const rows = await select<AdGrainRow>(
         "ads_daily",
@@ -560,12 +563,13 @@ export async function callTool(
             campaign_id: r.campaign_id ?? "",
             campaign_name: r.campaign_name ?? null,
           }),
-          cap(args, 50),
+          limit,
         ),
       };
     }
 
     case "ads_by_asin": {
+      const limit = cap(args, 50);
       const { query } = range(args, "ad_date");
       const rows = await select<AdGrainRow>(
         "ads_advertised_product",
@@ -586,12 +590,13 @@ export async function callTool(
           rows,
           (r) => `${r.asin ?? ""}\u0000${r.sku ?? ""}`,
           (r) => ({ asin: r.asin ?? "", sku: r.sku ?? "" }),
-          cap(args, 50),
+          limit,
         ),
       };
     }
 
     case "ad_change_history": {
+      const limit = Math.min(cap(args, 200), ROW_CAP);
       const from = day(args["from"], "from");
       const to = day(args["to"], "to");
       if (from > to) throw new ToolError("`from` is after `to`");
@@ -620,7 +625,7 @@ export async function callTool(
             "changed_at,entity_type,entity_id,entity_name,campaign_id," +
             "campaign_name,change_type,field_name,old_value,new_value,changed_by",
         },
-        Math.min(cap(args, 200), ROW_CAP),
+        limit,
       );
       return {
         range: { from, to },
