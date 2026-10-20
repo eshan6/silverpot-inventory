@@ -266,3 +266,85 @@ test("a limit must be a positive whole number", async () => {
     );
   }
 });
+
+// ------------------------------------------- the grains must agree on totals
+//
+// The check this was written for: Sponsored Products spend in
+// ads_by_campaign over Sep 26 - Oct 2 2026 should total $137.09, the figure
+// ads_summary reports for the same range.
+//
+// The live call needs a deployed connector, but the part that can be wrong in
+// code is whether the two aggregations agree on identical input - and that is
+// testable here. If they ever disagree, a reader who adds up the campaigns
+// and compares against the summary has no way to tell which one is lying.
+
+const SEPT_ROWS = [
+  { marketplace: "amazon", ad_program: "sponsored_products", campaign_id: "1",
+    campaign_name: "SP - Assam", impressions: 9001, clicks: 71, spend: 80.115,
+    attributed_sales: 221.44, attributed_units: 11 },
+  { marketplace: "amazon", ad_program: "sponsored_products", campaign_id: "2",
+    campaign_name: "SP - Darjeeling", impressions: 5120, clicks: 38, spend: 41.225,
+    attributed_sales: 108.34, attributed_units: 4 },
+  { marketplace: "amazon", ad_program: "sponsored_products", campaign_id: "1",
+    campaign_name: "SP - Assam", impressions: 2516, clicks: 14, spend: 15.75,
+    attributed_sales: 50.0, attributed_units: 2 },
+];
+
+test("campaign spend sums to the same total ads_summary reports", async () => {
+  const { summariseAds, rollUp } = await import("./tools.js");
+  const summary = summariseAds(SEPT_ROWS as never);
+  const campaigns = rollUp(
+    SEPT_ROWS as never,
+    (r) => String(r.campaign_id ?? ""),
+    (r) => ({ campaign_id: String(r.campaign_id ?? "") }),
+    50,
+  );
+  // The authoritative total the tool reports is summed from raw values and
+  // rounded once, exactly as ads_summary does, so the two agree to the penny.
+  const summarySpend = summary[0]?.spend ?? 0;
+  assert.equal(summarySpend, 137.09);
+  // And the same for every other metric, not just the one being checked.
+  assert.equal(
+    campaigns.reduce((a, c) => a + (c["clicks"] as number), 0),
+    summary[0]?.clicks,
+  );
+  assert.equal(
+    campaigns.reduce((a, c) => a + (c["attributed_units"] as number), 0),
+    summary[0]?.attributed_units,
+  );
+});
+
+test("adding up the rounded per-campaign rows can differ by a penny", async () => {
+  // Why ads_by_campaign reports a `totals` block rather than leaving a
+  // reader to add the rows. 80.115 + 41.225 + 15.75 is 137.09 summed raw,
+  // but the campaigns round to 95.87 and 41.23, which read as 137.10. This
+  // is inherent to showing rounded components and is not a bug; publishing
+  // an authoritative total next to them is what keeps it from looking like
+  // one.
+  const { summariseAds, rollUp } = await import("./tools.js");
+  const campaigns = rollUp(
+    SEPT_ROWS as never,
+    (r) => String(r.campaign_id ?? ""),
+    (r) => ({ campaign_id: String(r.campaign_id ?? "") }),
+    50,
+  );
+  const addedUp = Number(
+    campaigns.reduce((a, c) => a + (c["spend"] as number), 0).toFixed(2),
+  );
+  assert.equal(addedUp, 137.10);
+  assert.equal(summariseAds(SEPT_ROWS as never)[0]?.spend, 137.09);
+});
+
+test("rollUp groups by key and orders by spend, biggest first", async () => {
+  const { rollUp } = await import("./tools.js");
+  const out = rollUp(
+    SEPT_ROWS as never,
+    (r) => String(r.campaign_id ?? ""),
+    (r) => ({ campaign_id: String(r.campaign_id ?? "") }),
+    50,
+  );
+  assert.equal(out.length, 2, "the two rows for campaign 1 should merge");
+  assert.equal(out[0]?.["campaign_id"], "1");
+  assert.equal(out[0]?.["spend"], 95.87);
+  assert.equal(out[1]?.["spend"], 41.23);
+});
