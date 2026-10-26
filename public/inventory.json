@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T09:45:24+00:00",
+  "generated_at": "2026-10-26T11:00:05+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 81,
+      "available": 80,
       "in_stock": true,
-      "fba": 76,
+      "fba": 75,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 18.0,
+      "days_of_cover": 24.0,
       "inbound": 1
     },
     {
@@ -111,7 +111,7 @@
       "fba": 28,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 112.0,
+      "days_of_cover": 224.0,
       "inbound": 0
     },
     {
@@ -171,7 +171,7 @@
       "fba": 6,
       "wfs": 53,
       "buffer": 0,
-      "days_of_cover": 472.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -271,12 +271,12 @@
       "sku": "XE-EKSY-GI07",
       "asin": "B0DLV1KKZ6",
       "website_product_id": "",
-      "available": 3,
-      "in_stock": true,
-      "fba": 3,
+      "available": 0,
+      "in_stock": false,
+      "fba": 0,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 2.3,
+      "days_of_cover": 0.0,
       "inbound": 0
     },
     {
@@ -481,9 +481,9 @@
       "sku": "LI-IE63-L7K3",
       "asin": "",
       "website_product_id": "",
-      "available": 179,
+      "available": 182,
       "in_stock": true,
-      "fba": 179,
+      "fba": 182,
       "wfs": 0,
       "buffer": 0,
       "days_of_cover": null,
@@ -516,7 +516,7 @@
       "fba": 68,
       "wfs": 76,
       "buffer": 0,
-      "days_of_cover": 84.0,
+      "days_of_cover": 201.6,
       "inbound": 0
     },
     {
@@ -532,7 +532,7 @@
       "wfs": 27,
       "buffer": 0,
       "days_of_cover": 570.0,
-      "inbound": 0
+      "inbound": 1
     },
     {
       "internal_code": "2329US",
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 184,
+      "available": 201,
       "in_stock": true,
-      "fba": 158,
+      "fba": 175,
       "wfs": 26,
       "buffer": 0,
-      "days_of_cover": 21.2,
+      "days_of_cover": 23.2,
       "inbound": 0
     }
   ]
