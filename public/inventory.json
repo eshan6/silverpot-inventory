@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-08T11:53:29+00:00",
+  "generated_at": "2026-11-09T13:49:28+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,13 +16,13 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 108,
+      "available": 109,
       "in_stock": true,
-      "fba": 103,
+      "fba": 104,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 81.0,
-      "inbound": 2
+      "days_of_cover": 90.8,
+      "inbound": 1
     },
     {
       "internal_code": "2202US",
@@ -106,12 +106,12 @@
       "sku": "2R-SB56-O2TT",
       "asin": "B0DLTJD2Y4",
       "website_product_id": "",
-      "available": 26,
+      "available": 25,
       "in_stock": true,
-      "fba": 26,
+      "fba": 25,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 208.0,
+      "days_of_cover": 100.0,
       "inbound": 0
     },
     {
@@ -126,7 +126,7 @@
       "fba": 16,
       "wfs": 10,
       "buffer": 0,
-      "days_of_cover": 208.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -226,12 +226,12 @@
       "sku": "3I-BITV-OM1V",
       "asin": "B0DLTZ3QT7",
       "website_product_id": "",
-      "available": 13,
+      "available": 12,
       "in_stock": true,
-      "fba": 13,
+      "fba": 12,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 52.0,
+      "days_of_cover": 32.0,
       "inbound": 0
     },
     {
@@ -301,12 +301,12 @@
       "sku": "TG-34ZG-5OMZ",
       "asin": "B0DLTZBL9P",
       "website_product_id": "",
-      "available": 6,
+      "available": 7,
       "in_stock": true,
-      "fba": 6,
+      "fba": 7,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 48.0,
+      "days_of_cover": 49.0,
       "inbound": 0
     },
     {
@@ -361,12 +361,12 @@
       "sku": "DL-EEDT-MG20",
       "asin": "B0DLWRZ5NY",
       "website_product_id": "",
-      "available": 18,
+      "available": 17,
       "in_stock": true,
-      "fba": 15,
+      "fba": 14,
       "wfs": 3,
       "buffer": 0,
-      "days_of_cover": 72.0,
+      "days_of_cover": 136.0,
       "inbound": 0
     },
     {
@@ -396,7 +396,7 @@
       "fba": 19,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": 94.5,
+      "days_of_cover": 108.0,
       "inbound": 0
     },
     {
@@ -481,12 +481,12 @@
       "sku": "LI-IE63-L7K3",
       "asin": "",
       "website_product_id": "",
-      "available": 210,
+      "available": 211,
       "in_stock": true,
-      "fba": 210,
+      "fba": 211,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 210.0,
+      "days_of_cover": 168.8,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 67,
       "wfs": 66,
       "buffer": 0,
-      "days_of_cover": 118.2,
+      "days_of_cover": 133.0,
       "inbound": 0
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 236,
+      "available": 234,
       "in_stock": true,
-      "fba": 211,
+      "fba": 209,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 88.5,
+      "days_of_cover": 78.0,
       "inbound": 0
     }
   ]
