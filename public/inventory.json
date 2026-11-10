@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T13:49:28+00:00",
+  "generated_at": "2026-11-10T13:24:51+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 109,
+      "available": 107,
       "in_stock": true,
-      "fba": 104,
+      "fba": 102,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 90.8,
+      "days_of_cover": 76.4,
       "inbound": 1
     },
     {
@@ -111,7 +111,7 @@
       "fba": 25,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 100.0,
+      "days_of_cover": 200.0,
       "inbound": 0
     },
     {
@@ -196,12 +196,12 @@
       "sku": "IP-PY08-5BTO",
       "asin": "B0DLTHPR2M",
       "website_product_id": "",
-      "available": 0,
-      "in_stock": false,
+      "available": 2,
+      "in_stock": true,
       "fba": 0,
-      "wfs": 0,
+      "wfs": 2,
       "buffer": 0,
-      "days_of_cover": 0.0,
+      "days_of_cover": 2.3,
       "inbound": 0
     },
     {
@@ -211,12 +211,12 @@
       "sku": "8L-FFDL-RR3O",
       "asin": "B0DLTZ2612",
       "website_product_id": "",
-      "available": 12,
+      "available": 13,
       "in_stock": true,
-      "fba": 12,
+      "fba": 13,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 96.0,
+      "days_of_cover": 91.0,
       "inbound": 0
     },
     {
@@ -231,7 +231,7 @@
       "fba": 12,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 32.0,
+      "days_of_cover": 48.0,
       "inbound": 0
     },
     {
@@ -306,7 +306,7 @@
       "fba": 7,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 49.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -481,12 +481,12 @@
       "sku": "LI-IE63-L7K3",
       "asin": "",
       "website_product_id": "",
-      "available": 211,
+      "available": 210,
       "in_stock": true,
-      "fba": 211,
+      "fba": 210,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 168.8,
+      "days_of_cover": 175.0,
       "inbound": 0
     },
     {
@@ -501,7 +501,7 @@
       "fba": 181,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 301.7,
+      "days_of_cover": 362.0,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 67,
       "wfs": 66,
       "buffer": 0,
-      "days_of_cover": 133.0,
+      "days_of_cover": 152.0,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 196,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 223.0,
+      "days_of_cover": 334.5,
       "inbound": 1
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 234,
+      "available": 233,
       "in_stock": true,
-      "fba": 209,
+      "fba": 208,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 78.0,
+      "days_of_cover": 73.6,
       "inbound": 0
     }
   ]
