@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-10T13:24:51+00:00",
+  "generated_at": "2026-11-11T12:39:12+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 107,
+      "available": 106,
       "in_stock": true,
-      "fba": 102,
+      "fba": 101,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 76.4,
+      "days_of_cover": 79.5,
       "inbound": 1
     },
     {
@@ -186,7 +186,7 @@
       "fba": 0,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 0.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -201,7 +201,7 @@
       "fba": 0,
       "wfs": 2,
       "buffer": 0,
-      "days_of_cover": 2.3,
+      "days_of_cover": 7.0,
       "inbound": 0
     },
     {
@@ -231,7 +231,7 @@
       "fba": 12,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 48.0,
+      "days_of_cover": 96.0,
       "inbound": 0
     },
     {
@@ -481,12 +481,12 @@
       "sku": "LI-IE63-L7K3",
       "asin": "",
       "website_product_id": "",
-      "available": 210,
+      "available": 209,
       "in_stock": true,
-      "fba": 210,
+      "fba": 209,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 175.0,
+      "days_of_cover": 179.1,
       "inbound": 0
     },
     {
@@ -496,12 +496,12 @@
       "sku": "SE-3UPE-IO7M",
       "asin": "",
       "website_product_id": "",
-      "available": 181,
+      "available": 179,
       "in_stock": true,
-      "fba": 181,
+      "fba": 179,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 362.0,
+      "days_of_cover": 250.6,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 196,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 334.5,
+      "days_of_cover": 669.0,
       "inbound": 1
     },
     {
@@ -546,7 +546,7 @@
       "fba": 208,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 73.6,
+      "days_of_cover": 199.7,
       "inbound": 0
     }
   ]
