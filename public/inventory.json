@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T12:39:12+00:00",
+  "generated_at": "2026-11-12T13:42:21+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 106,
+      "available": 102,
       "in_stock": true,
-      "fba": 101,
+      "fba": 97,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 79.5,
+      "days_of_cover": 59.5,
       "inbound": 1
     },
     {
@@ -486,7 +486,7 @@
       "fba": 209,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 179.1,
+      "days_of_cover": 313.5,
       "inbound": 0
     },
     {
@@ -496,12 +496,12 @@
       "sku": "SE-3UPE-IO7M",
       "asin": "",
       "website_product_id": "",
-      "available": 179,
+      "available": 178,
       "in_stock": true,
-      "fba": 179,
+      "fba": 178,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 250.6,
+      "days_of_cover": 207.7,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 67,
       "wfs": 66,
       "buffer": 0,
-      "days_of_cover": 152.0,
+      "days_of_cover": 212.8,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 196,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 669.0,
+      "days_of_cover": 780.5,
       "inbound": 1
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 233,
+      "available": 232,
       "in_stock": true,
-      "fba": 208,
+      "fba": 207,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 199.7,
+      "days_of_cover": 174.0,
       "inbound": 0
     }
   ]
