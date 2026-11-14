@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-13T13:01:18+00:00",
+  "generated_at": "2026-11-14T12:06:09+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 99,
+      "available": 98,
       "in_stock": true,
-      "fba": 94,
+      "fba": 93,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 49.5,
+      "days_of_cover": 45.7,
       "inbound": 0
     },
     {
@@ -226,12 +226,12 @@
       "sku": "3I-BITV-OM1V",
       "asin": "B0DLTZ3QT7",
       "website_product_id": "",
-      "available": 12,
+      "available": 11,
       "in_stock": true,
-      "fba": 12,
+      "fba": 11,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 96.0,
+      "days_of_cover": 44.0,
       "inbound": 0
     },
     {
@@ -276,7 +276,7 @@
       "fba": 0,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 0.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -396,7 +396,7 @@
       "fba": 19,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": 108.0,
+      "days_of_cover": 216.0,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 67,
       "wfs": 66,
       "buffer": 0,
-      "days_of_cover": 354.7,
+      "days_of_cover": 1064.0,
       "inbound": 0
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 228,
+      "available": 225,
       "in_stock": true,
-      "fba": 203,
+      "fba": 200,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 124.4,
+      "days_of_cover": 112.5,
       "inbound": 0
     }
   ]
