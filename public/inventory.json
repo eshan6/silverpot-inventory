@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-14T12:06:09+00:00",
+  "generated_at": "2026-11-15T12:41:02+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -21,7 +21,7 @@
       "fba": 93,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 45.7,
+      "days_of_cover": 52.8,
       "inbound": 0
     },
     {
@@ -51,7 +51,7 @@
       "fba": 23,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 92.0,
+      "days_of_cover": 184.0,
       "inbound": 0
     },
     {
@@ -396,7 +396,7 @@
       "fba": 19,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": 216.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -496,12 +496,12 @@
       "sku": "SE-3UPE-IO7M",
       "asin": "",
       "website_product_id": "",
-      "available": 184,
+      "available": 189,
       "in_stock": true,
-      "fba": 184,
+      "fba": 189,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 184.0,
+      "days_of_cover": 189.0,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 67,
       "wfs": 66,
       "buffer": 0,
-      "days_of_cover": 1064.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 190,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 217.0,
+      "days_of_cover": 289.3,
       "inbound": 0
     },
     {
@@ -546,7 +546,7 @@
       "fba": 200,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 112.5,
+      "days_of_cover": 143.2,
       "inbound": 0
     }
   ]
