@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-15T12:41:02+00:00",
+  "generated_at": "2026-11-16T13:33:23+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 98,
+      "available": 96,
       "in_stock": true,
-      "fba": 93,
+      "fba": 91,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 52.8,
+      "days_of_cover": 51.7,
       "inbound": 0
     },
     {
@@ -201,7 +201,7 @@
       "fba": 0,
       "wfs": 2,
       "buffer": 0,
-      "days_of_cover": 7.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -216,7 +216,7 @@
       "fba": 13,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 91.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -301,12 +301,12 @@
       "sku": "TG-34ZG-5OMZ",
       "asin": "B0DLTZBL9P",
       "website_product_id": "",
-      "available": 7,
+      "available": 6,
       "in_stock": true,
-      "fba": 7,
+      "fba": 6,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 42.0,
       "inbound": 0
     },
     {
@@ -321,7 +321,7 @@
       "fba": 23,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 184.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -481,12 +481,12 @@
       "sku": "LI-IE63-L7K3",
       "asin": "",
       "website_product_id": "",
-      "available": 209,
+      "available": 208,
       "in_stock": true,
-      "fba": 209,
+      "fba": 208,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 365.8,
+      "days_of_cover": 485.3,
       "inbound": 0
     },
     {
@@ -496,12 +496,12 @@
       "sku": "SE-3UPE-IO7M",
       "asin": "",
       "website_product_id": "",
-      "available": 189,
+      "available": 195,
       "in_stock": true,
-      "fba": 189,
+      "fba": 195,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 189.0,
+      "days_of_cover": 325.0,
       "inbound": 0
     },
     {
@@ -511,12 +511,12 @@
       "sku": "X4-NBPO-69NU",
       "asin": "",
       "website_product_id": "",
-      "available": 133,
+      "available": 132,
       "in_stock": true,
       "fba": 67,
-      "wfs": 66,
+      "wfs": 65,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 1056.0,
       "inbound": 0
     },
     {
@@ -526,12 +526,12 @@
       "sku": "M6-VQP9-KZDY",
       "asin": "",
       "website_product_id": "",
-      "available": 217,
+      "available": 215,
       "in_stock": true,
-      "fba": 190,
+      "fba": 188,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 289.3,
+      "days_of_cover": 215.0,
       "inbound": 0
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 225,
+      "available": 219,
       "in_stock": true,
-      "fba": 200,
+      "fba": 194,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 143.2,
+      "days_of_cover": 103.1,
       "inbound": 0
     }
   ]
