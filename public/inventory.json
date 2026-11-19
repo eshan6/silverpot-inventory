@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-18T13:52:19+00:00",
+  "generated_at": "2026-11-19T14:20:51+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 101,
+      "available": 100,
       "in_stock": true,
-      "fba": 96,
+      "fba": 95,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 54.4,
+      "days_of_cover": 53.8,
       "inbound": 0
     },
     {
@@ -46,12 +46,12 @@
       "sku": "CA-1KR5-XQKF",
       "asin": "B0DLNXW93Y",
       "website_product_id": "",
-      "available": 23,
+      "available": 19,
       "in_stock": true,
-      "fba": 23,
+      "fba": 19,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 184.0,
+      "days_of_cover": 30.4,
       "inbound": 0
     },
     {
@@ -211,12 +211,12 @@
       "sku": "8L-FFDL-RR3O",
       "asin": "B0DLTZ2612",
       "website_product_id": "",
-      "available": 6,
+      "available": 8,
       "in_stock": true,
-      "fba": 6,
+      "fba": 8,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 6.9,
+      "days_of_cover": 8.0,
       "inbound": 0
     },
     {
@@ -486,7 +486,7 @@
       "fba": 208,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 832.0,
+      "days_of_cover": 1664.0,
       "inbound": 0
     },
     {
@@ -501,7 +501,7 @@
       "fba": 201,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 268.0,
+      "days_of_cover": 804.0,
       "inbound": 0
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 223,
+      "available": 221,
       "in_stock": true,
-      "fba": 198,
+      "fba": 196,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 97.6,
+      "days_of_cover": 85.9,
       "inbound": 0
     }
   ]
