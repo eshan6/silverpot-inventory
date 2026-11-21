@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-20T13:57:16+00:00",
+  "generated_at": "2026-11-21T13:24:41+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -21,7 +21,7 @@
       "fba": 96,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 67.3,
+      "days_of_cover": 101.0,
       "inbound": 0
     },
     {
@@ -51,7 +51,7 @@
       "fba": 19,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 30.4,
+      "days_of_cover": 38.0,
       "inbound": 0
     },
     {
@@ -481,12 +481,12 @@
       "sku": "LI-IE63-L7K3",
       "asin": "",
       "website_product_id": "",
-      "available": 208,
+      "available": 209,
       "in_stock": true,
-      "fba": 208,
+      "fba": 209,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 1664.0,
+      "days_of_cover": 1463.0,
       "inbound": 0
     },
     {
@@ -496,12 +496,12 @@
       "sku": "SE-3UPE-IO7M",
       "asin": "",
       "website_product_id": "",
-      "available": 201,
+      "available": 200,
       "in_stock": true,
-      "fba": 201,
+      "fba": 200,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 1000.0,
       "inbound": 0
     },
     {
@@ -526,12 +526,12 @@
       "sku": "M6-VQP9-KZDY",
       "asin": "",
       "website_product_id": "",
-      "available": 228,
+      "available": 226,
       "in_stock": true,
-      "fba": 201,
+      "fba": 199,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 171.0,
+      "days_of_cover": 339.0,
       "inbound": 0
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 220,
+      "available": 218,
       "in_stock": true,
-      "fba": 195,
+      "fba": 193,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 85.6,
+      "days_of_cover": 95.4,
       "inbound": 0
     }
   ]
