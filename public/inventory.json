@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T15:53:30+00:00",
+  "generated_at": "2026-11-24T01:11:36+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 100,
+      "available": 99,
       "in_stock": true,
-      "fba": 95,
+      "fba": 94,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 100.0,
+      "days_of_cover": 118.8,
       "inbound": 0
     },
     {
@@ -306,7 +306,7 @@
       "fba": 6,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 48.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -486,7 +486,7 @@
       "fba": 208,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 728.0,
+      "days_of_cover": 1456.0,
       "inbound": 0
     },
     {
@@ -501,7 +501,7 @@
       "fba": 199,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 597.0,
+      "days_of_cover": 696.5,
       "inbound": 0
     },
     {
@@ -516,7 +516,7 @@
       "fba": 67,
       "wfs": 63,
       "buffer": 0,
-      "days_of_cover": 346.7,
+      "days_of_cover": 520.0,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 196,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 191.1,
+      "days_of_cover": 267.6,
       "inbound": 0
     },
     {
@@ -546,7 +546,7 @@
       "fba": 191,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 100.8,
+      "days_of_cover": 168.0,
       "inbound": 0
     }
   ]
