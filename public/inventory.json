@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-24T01:11:36+00:00",
+  "generated_at": "2026-11-25T15:30:07+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 99,
+      "available": 97,
       "in_stock": true,
-      "fba": 94,
+      "fba": 92,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 118.8,
+      "days_of_cover": 97.0,
       "inbound": 0
     },
     {
@@ -196,12 +196,12 @@
       "sku": "IP-PY08-5BTO",
       "asin": "B0DLTHPR2M",
       "website_product_id": "",
-      "available": 2,
-      "in_stock": true,
+      "available": 0,
+      "in_stock": false,
       "fba": 0,
-      "wfs": 2,
+      "wfs": 0,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 0.0,
       "inbound": 0
     },
     {
@@ -396,7 +396,7 @@
       "fba": 18,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": 91.0,
+      "days_of_cover": 182.0,
       "inbound": 0
     },
     {
@@ -496,12 +496,12 @@
       "sku": "SE-3UPE-IO7M",
       "asin": "",
       "website_product_id": "",
-      "available": 199,
+      "available": 198,
       "in_stock": true,
-      "fba": 199,
+      "fba": 198,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 696.5,
+      "days_of_cover": 528.0,
       "inbound": 0
     },
     {
@@ -511,12 +511,12 @@
       "sku": "X4-NBPO-69NU",
       "asin": "",
       "website_product_id": "",
-      "available": 130,
+      "available": 129,
       "in_stock": true,
       "fba": 67,
-      "wfs": 63,
+      "wfs": 62,
       "buffer": 0,
-      "days_of_cover": 520.0,
+      "days_of_cover": 344.0,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 196,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 267.6,
+      "days_of_cover": 312.2,
       "inbound": 0
     },
     {
@@ -541,12 +541,12 @@
       "sku": "1G-5XDW-C8O9",
       "asin": "",
       "website_product_id": "",
-      "available": 216,
+      "available": 214,
       "in_stock": true,
-      "fba": 191,
+      "fba": 189,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 168.0,
+      "days_of_cover": 166.4,
       "inbound": 0
     }
   ]
