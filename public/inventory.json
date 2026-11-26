@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-25T15:30:07+00:00",
+  "generated_at": "2026-11-26T15:04:04+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -21,7 +21,7 @@
       "fba": 92,
       "wfs": 5,
       "buffer": 0,
-      "days_of_cover": 97.0,
+      "days_of_cover": 135.8,
       "inbound": 0
     },
     {
@@ -216,7 +216,7 @@
       "fba": 8,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 8.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -396,7 +396,7 @@
       "fba": 18,
       "wfs": 8,
       "buffer": 0,
-      "days_of_cover": 182.0,
+      "days_of_cover": 208.0,
       "inbound": 0
     },
     {
@@ -531,7 +531,7 @@
       "fba": 196,
       "wfs": 27,
       "buffer": 0,
-      "days_of_cover": 312.2,
+      "days_of_cover": 356.8,
       "inbound": 0
     },
     {
@@ -546,7 +546,7 @@
       "fba": 189,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 166.4,
+      "days_of_cover": 190.2,
       "inbound": 0
     }
   ]
