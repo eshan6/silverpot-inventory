@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-26T15:04:04+00:00",
+  "generated_at": "2026-11-27T14:57:15+00:00",
   "source": "FBA fulfillable + WFS available-to-sell, less safety buffer",
   "sku_count": 36,
   "source_status": {
@@ -16,12 +16,12 @@
       "sku": "R9-D7AT-S5WW",
       "asin": "B0DLGWMV7R",
       "website_product_id": "",
-      "available": 97,
+      "available": 96,
       "in_stock": true,
       "fba": 92,
-      "wfs": 5,
+      "wfs": 4,
       "buffer": 0,
-      "days_of_cover": 135.8,
+      "days_of_cover": 134.4,
       "inbound": 0
     },
     {
@@ -51,7 +51,7 @@
       "fba": 19,
       "wfs": 0,
       "buffer": 0,
-      "days_of_cover": 38.0,
+      "days_of_cover": null,
       "inbound": 0
     },
     {
@@ -361,12 +361,12 @@
       "sku": "DL-EEDT-MG20",
       "asin": "B0DLWRZ5NY",
       "website_product_id": "",
-      "available": 17,
+      "available": 5,
       "in_stock": true,
-      "fba": 14,
+      "fba": 2,
       "wfs": 3,
       "buffer": 0,
-      "days_of_cover": null,
+      "days_of_cover": 3.3,
       "inbound": 0
     },
     {
@@ -546,7 +546,7 @@
       "fba": 189,
       "wfs": 25,
       "buffer": 0,
-      "days_of_cover": 190.2,
+      "days_of_cover": 244.6,
       "inbound": 0
     }
   ]
